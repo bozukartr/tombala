@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tombala-v3';
+const CACHE_NAME = 'tombala-v5';
 const ASSETS = [
     './',
     './index.html',

@@ -537,13 +537,14 @@ function listenToRoom(roomId) {
 
                     // Prepare stars for claims
                     let starsHtml = '<div class="opponent-stars">';
-                    if (claimsCount >= 1) starsHtml += '<span class="star">⭐</span>';
-                    if (claimsCount >= 2) starsHtml += '<span class="star">⭐</span>';
+                    for (let i = 0; i < claimsCount; i++) {
+                        starsHtml += '<span class="star">⭐</span>';
+                    }
                     starsHtml += '</div>';
 
                     div.innerHTML = `
                         <div class="opponent-header">
-                            <div class="opponent-name">${p.displayName || 'Guest'}</div>
+                            <span class="opponent-name">${p.displayName || 'Guest'}</span>
                             ${starsHtml}
                         </div>
                         ${miniGridHtml}
@@ -709,7 +710,10 @@ function startGameLoop() {
     // Draw a number every 5 seconds (Slower)
     const interval = setInterval(async () => {
         // Stop if not host or game status changed or game over
-        if (!state.isHost || state.currentScreen !== 'game-screen') {
+        const snapshot = await firebase.database().ref('rooms/' + state.roomCode).once('value');
+        const data = snapshot.val();
+
+        if (!state.isHost || state.currentScreen !== 'game-screen' || (data && data.winner)) {
             clearInterval(interval);
             return;
         }
@@ -766,8 +770,11 @@ async function handleAIProgress(num, roomRef) {
                 // Recalculate claims for bot
                 let rowsCompleted = 0;
                 p.card.forEach(row => {
-                    const markedInRow = row.filter(n => n === null || (p.progress && p.progress[n]) || n === num);
-                    if (markedInRow.length === 9) rowsCompleted++;
+                    const nonNulls = row.filter(n => n !== null);
+                    const markedInRow = nonNulls.filter(n => (p.progress && p.progress[n]) || n === num);
+                    if (nonNulls.length > 0 && nonNulls.length === markedInRow.length) {
+                        rowsCompleted++;
+                    }
                 });
 
                 updates[`playerData/${uid}/claimsCount`] = rowsCompleted;
@@ -966,9 +973,6 @@ function onCellClick(e) {
 }
 
 function checkClaims() {
-    // Check 1. Cinko, 2. Cinko, Tombala
-    // Get all rows from DOM or State
-
     const cardDiv = document.getElementById('my-card');
     const rows = cardDiv.querySelectorAll('.card-row');
     let rowsCompleted = 0;
@@ -978,35 +982,20 @@ function checkClaims() {
         const marked = row.querySelectorAll('.card-cell.marked');
         if (cells.length === marked.length && cells.length > 0) {
             rowsCompleted++;
+            row.classList.add('completed');
+        } else {
+            row.classList.remove('completed');
         }
     });
-
-    const btn1 = document.getElementById('claim-1cinko');
-    const btn2 = document.getElementById('claim-2cinko');
-    const btnT = document.getElementById('claim-tombala');
-
-    if (rowsCompleted >= 1) {
-        btn1.classList.add('active');
-        btn1.disabled = false;
-    }
-    if (rowsCompleted >= 2) {
-        btn2.classList.add('active');
-        btn2.disabled = false;
-    }
 
     // Sync claim count to Firebase
     if (state.roomCode && state.user) {
         firebase.database().ref(`rooms/${state.roomCode}/playerData/${state.user.uid}`).update({
             claimsCount: rowsCompleted
         });
-    }
 
-    if (rowsCompleted === 3) {
-        btnT.classList.add('active');
-        btnT.disabled = false;
-
-        // AUTO WIN: if tombala is claimed, update Firebase winner
-        if (state.roomCode) {
+        // AUTO WIN: if 3 rows completed, update Firebase winner
+        if (rowsCompleted === 3) {
             firebase.database().ref('rooms/' + state.roomCode).update({
                 winner: state.user
             });
