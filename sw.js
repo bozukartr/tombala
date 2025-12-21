@@ -1,8 +1,10 @@
-const CACHE_NAME = 'tombala-v2';
+const CACHE_NAME = 'tombala-v3';
 const ASSETS = [
     './',
     './index.html',
     './style.css',
+    './profile.css',
+    './profile.js',
     './app.js',
     './firebase-config.js',
     'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap'
