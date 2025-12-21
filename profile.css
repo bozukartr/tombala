@@ -1,0 +1,392 @@
+/* Profile & Editor Screen Styles */
+
+#profile-screen,
+#editor-screen {
+    background: radial-gradient(circle at bottom left, #1a1a40, var(--bg-color));
+}
+
+.top-bar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-outline {
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.btn-outline:active {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Profile Info */
+.profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 30px 20px;
+}
+
+.profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 4px solid var(--primary);
+    box-shadow: 0 0 20px rgba(233, 69, 96, 0.4);
+}
+
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 20px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Card Editor Styles */
+.editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 10px;
+}
+
+.editor-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 4px;
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 12px;
+    border: 4px solid var(--secondary);
+}
+
+.editor-cell {
+    aspect-ratio: 1;
+    background: #fff;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #333;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid #ddd;
+}
+
+.editor-cell.selected {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.1);
+    z-index: 2;
+    box-shadow: 0 4px 10px rgba(233, 69, 96, 0.3);
+}
+
+.editor-cell.empty {
+    background: #e0e0e0;
+}
+
+.editor-instructions {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 10px;
+}
+
+.selection-panel {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.num-pick {
+    aspect-ratio: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.num-pick.used {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.num-pick:active {
+    background: var(--primary);
+    transform: scale(0.9);
+}
+
+/* Card Selection Modal */
+.card-choice-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+.card-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.card-option i {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.card-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary);
+}
+
+/* Profile Tabs */
+.profile-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0;
+    padding: 0 20px;
+}
+
+.tab-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+}
+
+.tab-content {
+    display: none;
+    padding: 0 20px;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+}
+
+/* Shop & Inventory Grid */
+.shop-grid,
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.item-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.item-card:hover {
+    transform: translateY(-5px);
+}
+
+.item-preview {
+    height: 60px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+    color: white;
+}
+
+.item-name {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.item-price {
+    font-size: 0.8rem;
+    color: gold;
+    display: block;
+    margin-bottom: 10px;
+}
+
+/* THEMES CSS - Enhanced Marked Styles for Local Player */
+#my-card.theme-purple .card-cell.marked {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 0 15px rgba(106, 17, 203, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3) !important;
+    animation: purpleMark 0.5s ease-out;
+}
+
+#my-card.theme-neon .card-cell.marked {
+    background: #0d0d0d !important;
+    color: #ff00ff !important;
+    border: 2px solid #00ffff !important;
+    box-shadow: 0 0 10px #00ffff, inset 0 0 8px #ff00ff !important;
+    text-shadow: 0 0 5px #ff00ff !important;
+    animation: neonPulse 1.5s infinite alternate;
+}
+
+#my-card.theme-gold .card-cell.marked {
+    background: radial-gradient(circle at center, #fff9c4 0%, #ffd700 50%, #b8860b 100%) !important;
+    color: #3e2723 !important;
+    border: 1px solid #ffffff !important;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.8), inset 0 0 4px #000 !important;
+    overflow: hidden;
+}
+
+#my-card.theme-gold .card-cell.marked::after {
+    content: '';
+    position: absolute;
+    top: -100%;
+    left: -100%;
+    width: 300%;
+    height: 300%;
+    background: linear-gradient(45deg, transparent 45%, rgba(255, 255, 255, 0.6) 50%, transparent 55%);
+    animation: shimmer 2s infinite;
+    pointer-events: none;
+}
+
+/* Animations */
+@keyframes neonPulse {
+    from {
+        box-shadow: 0 0 5px #00ffff, inset 0 0 5px #ff00ff;
+    }
+
+    to {
+        box-shadow: 0 0 15px #00ffff, inset 0 0 12px #ff00ff;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translate(-30%, -30%);
+    }
+
+    100% {
+        transform: translate(30%, 30%);
+    }
+}
+
+@keyframes purpleMark {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    70% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.theme-purple {
+    background: rgba(40, 10, 60, 0.8) !important;
+    border: 2px solid #9d50bb !important;
+    box-shadow: 0 0 15px rgba(157, 80, 187, 0.4) !important;
+}
+
+.theme-purple .card-cell.marked {
+    background: #9d50bb !important;
+    color: white !important;
+    box-shadow: 0 0 8px #9d50bb !important;
+}
+
+.theme-neon {
+    background: rgba(10, 10, 30, 0.8) !important;
+    border: 2px solid #ff00ff !important;
+    box-shadow: 0 0 15px #ff00ff, inset 0 0 10px #00ffff !important;
+}
+
+.theme-neon .card-cell.marked {
+    background: #00ffff !important;
+    box-shadow: 0 0 10px #00ffff !important;
+    color: #000 !important;
+}
+
+.theme-gold {
+    background: linear-gradient(135deg, #2a2a00 0%, #000000 100%) !important;
+    border: 2px solid #ffd700 !important;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4) !important;
+}
+
+.theme-gold .card-cell.marked {
+    background: linear-gradient(to bottom, #ffd700, #b8860b) !important;
+    color: #000 !important;
+    box-shadow: 0 0 8px gold !important;
+}
+
+/* Item Status Badges */
+.status-badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.status-badge.equipped {
+    background: #4cd964;
+    color: white;
+}

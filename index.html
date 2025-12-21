@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Tombala Master</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="profile.css">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <div id="app">
+        <!-- Toast Notification Container -->
+        <div id="toast-container"></div>
+
+        <!-- Custom Modal Container -->
+        <div id="modal-overlay" class="hidden">
+            <div class="modal-content">
+                <h3 id="modal-title">Confirm</h3>
+                <p id="modal-message">Are you sure?</p>
+                <div class="modal-actions">
+                    <button id="modal-cancel-btn" class="btn-secondary">Cancel</button>
+                    <button id="modal-confirm-btn" class="btn-primary">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <section id="login-screen" class="screen active">
+            <div class="login-content">
+                <h1 class="logo">TOMBALA</h1>
+                <p class="subtitle">Herkesin Çinkosu Kendine</p>
+                <div class="login-card">
+                    <button class="btn-primary" id="google-login-btn">
+                        <i class="fab fa-google"></i> Sign in with Google
+                    </button>
+                    <button class="btn-secondary" id="guest-login-btn">
+                        <i class="fas fa-user-ninja"></i> Play as Guest
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Lobby Screen -->
+        <section id="lobby-screen" class="screen hidden">
+            <header class="top-bar">
+                <div class="user-info">
+                    <img id="user-avatar" src="" alt="Avatar" class="avatar hidden">
+                    <span id="user-name">Guest</span>
+                </div>
+                <div class="header-actions">
+                    <div class="balance-display" id="lobby-balance-area">
+                        <span class="currency">💰</span>
+                        <span id="user-balance">0</span>
+                    </div>
+                    <button class="btn-icon" id="open-profile-btn" title="Profile">
+                        <i class="fas fa-user-circle"></i>
+                    </button>
+                    <button class="btn-icon-text" id="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="lobby-content">
+                <h2>Game Mode</h2>
+                <div class="mode-selector">
+                    <div class="mode-card selected" data-mode="free">
+                        <h3>Free Play</h3>
+                        <p>Just for fun</p>
+                    </div>
+                    <div class="mode-card" data-mode="betting">
+                        <h3>Betting</h3>
+                        <p>50 Coins Entry</p>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="create-room-btn" class="btn-primary">Create Room</button>
+                    <div class="join-room-container">
+                        <input type="text" id="room-code-input" placeholder="Enter Room Code" maxlength="5">
+                        <button id="join-room-btn" class="btn-secondary">Join</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Waiting Room Screen -->
+        <section id="waiting-screen" class="screen hidden">
+            <header class="top-bar">
+                <button class="btn-icon" id="back-to-lobby" title="Leave">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="room-code-group">
+                    <span class="room-code-display">Room: <strong id="display-room-code">-----</strong></span>
+                    <button id="copy-code-btn" class="btn-mini">
+                        <i class="far fa-copy"></i>
+                    </button>
+                </div>
+            </header>
+            <div class="waiting-content">
+                <h3>Waiting for players...</h3>
+                <div class="player-list" id="waiting-player-list">
+                    <!-- Players will be added here -->
+                </div>
+                <p class="status-text" id="waiting-status">1/6 Players</p>
+                <button id="start-game-btn" class="btn-primary hidden">Start Game</button>
+            </div>
+        </section>
+
+        <!-- Game Screen -->
+        <section id="game-screen" class="screen hidden">
+            <header class="game-header">
+                <div class="header-top">
+                    <button class="btn-icon" id="leave-game-btn" title="Leave Game">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="header-main">
+                    <div class="current-number-display">
+                        <span id="current-number">--</span>
+                    </div>
+                    <div class="last-numbers" id="last-numbers-container">
+                        <!-- Last drawn numbers -->
+                    </div>
+                </div>
+            </header>
+
+            <div class="game-board-container">
+                <div class="tombala-card" id="my-card">
+                    <!-- 3 rows of numbers -->
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <div class="claims">
+                    <button class="btn-claim" id="claim-1cinko" disabled>1. Çinko</button>
+                    <button class="btn-claim" id="claim-2cinko" disabled>2. Çinko</button>
+                    <button class="btn-claim" id="claim-tombala" disabled>TOMBALA!</button>
+                </div>
+            </div>
+
+            <!-- Other players progress -->
+            <div class="opponents-progress" id="opponents-container">
+                <!-- Opponent mini-cards will be injected here -->
+            </div>
+        </section>
+
+        <!-- Game Over Screen -->
+        <section id="game-over-screen" class="screen hidden">
+            <div class="game-over-content">
+                <div class="winner-trophy">🏆</div>
+                <h1 id="game-over-title">Game Over</h1>
+                <p id="winner-announcement">Winner: <span>--</span></p>
+                <div class="prizes-won hidden">
+                    <!-- Prize details -->
+                </div>
+                <div class="action-buttons">
+                    <button id="play-again-btn" class="btn-primary">
+                        <i class="fas fa-redo"></i> Play Again
+                    </button>
+                    <button id="exit-to-lobby-btn" class="btn-secondary">
+                        <i class="fas fa-home"></i> Main Menu
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Profile Screen -->
+        <section id="profile-screen" class="screen hidden">
+            <header class="top-bar">
+                <button class="btn-icon" id="profile-to-lobby">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <h3>My Profile</h3>
+                <div style="width:40px"></div>
+            </header>
+            <div class="profile-content">
+                <div class="profile-header">
+                    <img id="profile-avatar" src="" alt="Avatar" class="profile-avatar-large">
+                    <h2 id="profile-name">Guest</h2>
+                </div>
+
+                <div class="profile-tabs">
+                    <button class="tab-btn active" data-tab="stats-tab">Stats</button>
+                    <button class="tab-btn" data-tab="shop-tab">Shop</button>
+                    <button class="tab-btn" data-tab="inventory-tab">Inventory</button>
+                </div>
+
+                <div id="stats-tab" class="tab-content active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-label">Total Coins</span>
+                            <span class="stat-value" id="profile-coins-val">1000</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Lucky Number</span>
+                            <span class="stat-value" id="lucky-number-val">--</span>
+                        </div>
+                    </div>
+
+                    <div class="lucky-stats-container">
+                        <h4>Most Marked Numbers</h4>
+                        <div id="stats-bar-chart" class="stats-chart">
+                            <!-- Bars will be injected here -->
+                        </div>
+                    </div>
+
+                    <div class="profile-actions">
+                        <button id="edit-custom-card-btn" class="btn-secondary">
+                            <i class="fas fa-edit"></i> Customize My Card
+                        </button>
+                        <button id="reset-stats-btn" class="btn-danger">
+                            <i class="fas fa-trash-alt"></i> Reset Stats
+                        </button>
+                    </div>
+                </div>
+
+                <div id="shop-tab" class="tab-content">
+                    <div class="shop-grid" id="market-items">
+                        <!-- Shop items injected here -->
+                    </div>
+                </div>
+
+                <div id="inventory-tab" class="tab-content">
+                    <div class="inventory-grid" id="inventory-items">
+                        <!-- Owned items injected here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Card Editor Screen -->
+        <section id="editor-screen" class="screen hidden">
+            <header class="top-bar">
+                <button class="btn-icon" id="editor-to-profile">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <h3>Custom Card Editor</h3>
+                <div class="top-bar-actions">
+                    <button class="btn-mini btn-outline" id="clear-editor-btn">Clear</button>
+                    <button class="btn-mini" id="save-custom-card-btn">Save</button>
+                </div>
+            </header>
+            <div class="editor-container">
+                <p class="editor-instructions">Select exactly 15 numbers (5 per row) to create your lucky card.</p>
+                <div class="editor-grid" id="editor-grid">
+                    <!-- 3x9 grid will be generated here -->
+                </div>
+                <div class="selection-panel" id="num-picker-panel">
+                    <!-- Numbers 1-90 will be generated here -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="profile.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
