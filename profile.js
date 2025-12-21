@@ -291,18 +291,31 @@ document.getElementById('open-profile-btn').addEventListener('click', () => {
     }
 });
 
-document.getElementById('profile-to-lobby').addEventListener('click', () => showScreen('lobby-screen'));
+document.addEventListener('DOMContentLoaded', () => {
+    const profileToLobby = document.getElementById('profile-to-lobby');
+    if (profileToLobby) {
+        profileToLobby.addEventListener('click', () => showScreen('lobby-screen'));
+    }
 
-// Tab Switching
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    // Tab Switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
 
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
+            tabs.forEach(b => b.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            const tabId = btn.dataset.tab;
+            if (tabId) {
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) targetTab.classList.add('active');
+            }
+        });
     });
 });
+
 
 function renderShop() {
     const marketGrid = document.getElementById('market-items');
@@ -384,24 +397,41 @@ async function equipTheme(themeId) {
     }
 }
 
-document.getElementById('editor-to-profile').addEventListener('click', () => showScreen('profile-screen'));
-document.getElementById('save-custom-card-btn').addEventListener('click', saveCustomCard);
-document.getElementById('edit-custom-card-btn').addEventListener('click', () => {
-    showScreen('editor-screen');
-    initEditor();
-});
-document.getElementById('clear-editor-btn').addEventListener('click', () => {
-    profileState.selectedNumbers = [];
-    document.querySelectorAll('.num-pick').forEach(p => p.classList.remove('used'));
-    renderEditorCard();
-    showToast('Selection cleared.');
-});
+document.addEventListener('DOMContentLoaded', () => {
+    const editorToProfile = document.getElementById('editor-to-profile');
+    const saveBtn = document.getElementById('save-custom-card-btn');
+    const editBtn = document.getElementById('edit-custom-card-btn');
+    const clearBtn = document.getElementById('clear-editor-btn');
+    const resetBtn = document.getElementById('reset-stats-btn');
 
-document.getElementById('reset-stats-btn').addEventListener('click', () => {
-    showConfirmModal('Reset Stats', 'This will delete all your marking history. Continue?', async () => {
-        if (state.user) {
-            await firebase.database().ref(`users/${state.user.uid}/stats`).remove();
-            showToast('Stats reset.');
-        }
-    });
+    if (editorToProfile) editorToProfile.addEventListener('click', () => showScreen('profile-screen'));
+    if (saveBtn) saveBtn.addEventListener('click', saveCustomCard);
+
+    if (editBtn) {
+        editBtn.addEventListener('click', () => {
+            showScreen('editor-screen');
+            initEditor();
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            profileState.selectedNumbers = [];
+            const numPicks = document.querySelectorAll('.num-pick');
+            numPicks.forEach(p => p.classList.remove('used'));
+            renderEditorCard();
+            showToast('Selection cleared.');
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            showConfirmModal('Reset Stats', 'This will delete all your marking history. Continue?', async () => {
+                if (state.user) {
+                    await firebase.database().ref(`users/${state.user.uid}/stats`).remove();
+                    showToast('Stats reset.');
+                }
+            });
+        });
+    }
 });

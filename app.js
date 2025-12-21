@@ -35,7 +35,7 @@ function showToast(msg) {
     }, 3000);
 }
 
-function showConfirmModal(title, message, onConfirm) {
+function showConfirmModal(title, message, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel') {
     const overlay = document.getElementById('modal-overlay');
     document.getElementById('modal-title').innerText = title;
     document.getElementById('modal-message').innerText = message;
@@ -44,6 +44,9 @@ function showConfirmModal(title, message, onConfirm) {
 
     const confirmBtn = document.getElementById('modal-confirm-btn');
     const cancelBtn = document.getElementById('modal-cancel-btn');
+
+    confirmBtn.innerText = confirmText;
+    cancelBtn.innerText = cancelText;
 
     // Clean up old listeners
     const newConfirm = confirmBtn.cloneNode(true);
@@ -58,6 +61,7 @@ function showConfirmModal(title, message, onConfirm) {
 
     newCancel.addEventListener('click', () => {
         overlay.classList.add('hidden');
+        if (onCancel) onCancel();
     });
 }
 
@@ -72,9 +76,44 @@ function updateUserInfo() {
 
 // Voice Synthesis
 let speechEnabled = true;
+let turkishVoice = null;
+
+// Warm-up voices
+function initVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    turkishVoice = voices.find(v => v.lang.includes('tr-TR') || v.lang.includes('tr_TR'));
+}
+
+if (window.speechSynthesis) {
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = initVoices;
+    }
+    initVoices();
+}
+
+// Mobile speech unlocker
+let speechUnlocked = false;
+function unlockSpeech() {
+    if (speechUnlocked || !window.speechSynthesis) return;
+
+    // Speak a silent utterance to unlock the context
+    const silent = new SpeechSynthesisUtterance('');
+    silent.volume = 0;
+    window.speechSynthesis.speak(silent);
+    speechUnlocked = true;
+    console.log('Speech synthesis unlocked');
+
+    document.removeEventListener('click', unlockSpeech);
+}
+document.addEventListener('click', unlockSpeech);
 
 function speakNumber(num) {
     if (!speechEnabled || !window.speechSynthesis) return;
+
+    // Mobile check: If not unlocked yet, we can't speak
+    if (!speechUnlocked) {
+        unlockSpeech();
+    }
 
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
@@ -84,11 +123,10 @@ function speakNumber(num) {
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
-    // Try to find a Turkish voice
-    const voices = window.speechSynthesis.getVoices();
-    const trVoice = voices.find(v => v.lang.includes('tr-TR') || v.lang.includes('tr_TR'));
-    if (trVoice) {
-        utterance.voice = trVoice;
+    // Use cached voice or try finding it again
+    if (!turkishVoice) initVoices();
+    if (turkishVoice) {
+        utterance.voice = turkishVoice;
     }
 
     window.speechSynthesis.speak(utterance);
@@ -206,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, () => {
                     showScreen('waiting-screen');
                     listenToRoom(code);
-                });
+                }, 'Use Custom', 'Random Card');
             } else {
                 showScreen('waiting-screen');
                 listenToRoom(code);
@@ -285,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             enterWaitingRoom(code);
                         }, () => {
                             enterWaitingRoom(code);
-                        });
+                        }, 'Use Custom', 'Random Card');
                     } else {
                         enterWaitingRoom(code);
                     }
@@ -370,10 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Claim Buttons
-    document.getElementById('claim-1cinko').addEventListener('click', () => showToast('1. Çinko Claimed!'));
-    document.getElementById('claim-2cinko').addEventListener('click', () => showToast('2. Çinko Claimed!'));
-    document.getElementById('claim-tombala').addEventListener('click', () => showToast('TOMBALA!!! WINNER!'));
+
 
     // Game Over Buttons
     document.getElementById('play-again-btn').addEventListener('click', async () => {

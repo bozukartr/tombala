@@ -293,17 +293,7 @@
     overflow: hidden;
 }
 
-#my-card.theme-gold .card-cell.marked::after {
-    content: '';
-    position: absolute;
-    top: -100%;
-    left: -100%;
-    width: 300%;
-    height: 300%;
-    background: linear-gradient(45deg, transparent 45%, rgba(255, 255, 255, 0.6) 50%, transparent 55%);
-    animation: shimmer 2s infinite;
-    pointer-events: none;
-}
+
 
 /* Animations */
 @keyframes neonPulse {
@@ -316,15 +306,7 @@
     }
 }
 
-@keyframes shimmer {
-    0% {
-        transform: translate(-30%, -30%);
-    }
 
-    100% {
-        transform: translate(30%, 30%);
-    }
-}
 
 @keyframes purpleMark {
     0% {
