@@ -242,12 +242,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     showScreen('waiting-screen');
                     listenToRoom(code);
                 }, () => {
-                    showScreen('waiting-screen');
-                    listenToRoom(code);
+                    // Random Card chosen
+                    showCardPicker((selectedCard) => {
+                        state.card = selectedCard;
+                        showScreen('waiting-screen');
+                        listenToRoom(code);
+                    });
                 }, 'Use Custom', 'Random Card');
             } else {
-                showScreen('waiting-screen');
-                listenToRoom(code);
+                // Not using custom or guest, show picker directly
+                showCardPicker((selectedCard) => {
+                    state.card = selectedCard;
+                    showScreen('waiting-screen');
+                    listenToRoom(code);
+                });
             }
             console.log('Room created successfully');
         } catch (error) {
@@ -322,10 +330,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             state.card = distributeNumbersProfessionally(profileState.customCard);
                             enterWaitingRoom(code);
                         }, () => {
-                            enterWaitingRoom(code);
+                            showCardPicker((selectedCard) => {
+                                state.card = selectedCard;
+                                enterWaitingRoom(code);
+                            });
                         }, 'Use Custom', 'Random Card');
                     } else {
-                        enterWaitingRoom(code);
+                        showCardPicker((selectedCard) => {
+                            state.card = selectedCard;
+                            enterWaitingRoom(code);
+                        });
                     }
                 } else {
                     showToast('Room not found');
@@ -442,31 +456,66 @@ function listenToRoom(roomId) {
             const data = snapshot.val();
             if (!data) return;
 
-            // Update Players List
+            // Update Players List (Professional Slot System)
             const list = document.getElementById('waiting-player-list');
             list.innerHTML = '';
 
-            // RDB might return an "object" instead of array if indices are sparse, 
-            // but usually it's an array if they are sequential.
             const players = Array.isArray(data.players) ? data.players : Object.values(data.players || {});
 
-            players.forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'player-item';
-                div.innerText = p.displayName + (p.uid === data.host ? ' (Host)' : '');
-                list.appendChild(div);
-            });
+            // Create 6 slots
+            for (let i = 0; i < 6; i++) {
+                const p = players[i];
+                const slot = document.createElement('div');
+                slot.className = p ? (p.uid === data.host ? 'player-slot filled is-host' : 'player-slot filled') : 'player-slot';
 
-            document.getElementById('waiting-status').innerText = `${players.length}/6 Players`;
+                if (p) {
+                    slot.innerHTML = `
+                        <div class="slot-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="slot-info">
+                            <span>${p.displayName || 'Guest'}</span>
+                            ${p.uid === data.host ? '<div class="host-badge">Host</div>' : ''}
+                        </div>
+                    `;
+                } else {
+                    slot.innerHTML = `
+                        <div class="slot-avatar">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="slot-info">
+                            <span>Waiting...</span>
+                        </div>
+                    `;
+                }
+                list.appendChild(slot);
+            }
+
+            document.getElementById('waiting-status').innerText = `${players.length}/6`;
 
             // Host Start Button Visibility
-            if (state.isHost && players.length >= 1) { // Allow 1 player for testing
-                document.getElementById('start-game-btn').classList.remove('hidden');
+            const startBtn = document.getElementById('start-game-btn');
+            const waitMsg = document.querySelector('.host-waiting-msg');
+
+            if (state.isHost) {
+                if (startBtn) startBtn.classList.remove('hidden');
+                if (waitMsg) waitMsg.classList.add('hidden');
+            } else {
+                if (startBtn) startBtn.classList.add('hidden');
+                if (waitMsg) waitMsg.classList.remove('hidden');
             }
 
             // Game Start Logic
             if (data.status === 'playing' && state.currentScreen !== 'game-screen') {
                 showScreen('game-screen');
+
+                // Update Room Code Display
+                const codeEl = document.getElementById('game-room-code');
+                if (codeEl) codeEl.innerText = state.roomCode;
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+                initBingoBoard();
+
                 // Generate Card if not already set (e.g. random card)
                 if (state.card.length === 0) {
                     state.card = generateTombalaCard();
@@ -505,51 +554,63 @@ function listenToRoom(roomId) {
             const potDisplay = document.getElementById('game-pot');
             if (potDisplay) potDisplay.innerText = data.pot || 0;
 
-            // Sync Opponent Cards
+            // Sync Opponent Cards (Full Size - Stable Update)
             const playerData = data.playerData || {};
             const opponentsContainer = document.getElementById('opponents-container');
             if (opponentsContainer) {
-                opponentsContainer.innerHTML = '';
-                Object.keys(playerData).forEach(uid => {
-                    if (!state.user || uid === state.user.uid) return;
+                const currentUids = Object.keys(playerData).filter(uid => !state.user || uid !== state.user.uid);
 
+                // 1. Remove wrappers for players who left
+                const existingWrappers = opponentsContainer.querySelectorAll('.opponent-card-wrapper');
+                existingWrappers.forEach(wrap => {
+                    const uid = wrap.dataset.uid;
+                    if (!currentUids.includes(uid)) {
+                        wrap.remove();
+                    }
+                });
+
+                // 2. Update or Create wrappers
+                currentUids.forEach(uid => {
                     const p = playerData[uid];
                     if (!p) return;
 
-                    const card = p.card || [];
+                    const cardGrid = p.card || [];
                     const progress = p.progress || {};
                     const claimsCount = p.claimsCount || 0;
                     const themeClass = p.themeClass || '';
+                    const equippedTheme = p.equippedTheme || 'classic';
 
-                    const div = document.createElement('div');
-                    div.className = `opponent-card-mini ${themeClass}`;
+                    let wrapper = opponentsContainer.querySelector(`.opponent-card-wrapper[data-uid="${uid}"]`);
 
-                    let miniGridHtml = '<div class="mini-grid">';
-                    card.forEach(row => {
-                        if (Array.isArray(row)) {
-                            row.forEach(num => {
-                                const isMarked = progress && progress[num] === true;
-                                miniGridHtml += `<div class="mini-cell ${num ? 'has-num' : ''} ${isMarked ? 'marked' : ''}"></div>`;
-                            });
-                        }
-                    });
-                    miniGridHtml += '</div>';
+                    if (!wrapper) {
+                        wrapper = document.createElement('div');
+                        wrapper.className = 'opponent-card-wrapper';
+                        wrapper.dataset.uid = uid;
 
-                    // Prepare stars for claims
-                    let starsHtml = '<div class="opponent-stars">';
-                    for (let i = 0; i < claimsCount; i++) {
-                        starsHtml += '<span class="star">⭐</span>';
+                        wrapper.innerHTML = `
+                            <div class="opponent-info">
+                                <span class="opponent-name">${p.displayName || 'Guest'}</span>
+                                <div class="opponent-stars" id="stars-${uid}"></div>
+                            </div>
+                            <div id="opp-card-${uid}" class="tombala-card ${themeClass}"></div>
+                        `;
+                        opponentsContainer.appendChild(wrapper);
                     }
-                    starsHtml += '</div>';
 
-                    div.innerHTML = `
-                        <div class="opponent-header">
-                            <span class="opponent-name">${p.displayName || 'Guest'}</span>
-                            ${starsHtml}
-                        </div>
-                        ${miniGridHtml}
-                    `;
-                    opponentsContainer.appendChild(div);
+                    // Update Stars
+                    const starsContainer = document.getElementById(`stars-${uid}`);
+                    if (starsContainer) {
+                        let starsHtml = '';
+                        for (let i = 0; i < claimsCount; i++) {
+                            starsHtml += '⭐';
+                        }
+                        if (starsContainer.innerHTML !== starsHtml) {
+                            starsContainer.innerHTML = starsHtml;
+                        }
+                    }
+
+                    // Update Card Content
+                    renderCard(cardGrid, `opp-card-${uid}`, false, equippedTheme, progress);
                 });
             }
 
@@ -645,7 +706,7 @@ function convertFlatToGridCard(flatNumbers) {
     });
     colGroups.forEach(g => g.sort((a, b) => a - b));
 
-    const grid = Array(3).fill(0).map(() => Array(9).fill(null));
+    const grid = Array(3).fill(0).map(() => Array(9).fill(0));
     const rowCounts = [0, 0, 0];
 
     function solve(colIdx, numInColIdx) {
@@ -675,7 +736,7 @@ function convertFlatToGridCard(flatNumbers) {
                 grid[r][colIdx] = num;
                 rowCounts[r]++;
                 if (solve(colIdx, numInColIdx + 1)) return true;
-                grid[r][colIdx] = null;
+                grid[r][colIdx] = 0;
                 rowCounts[r]--;
             }
         }
@@ -697,7 +758,8 @@ function syncMyCard() {
             card: state.card,
             progress: state.progress || {},
             claimsCount: state.claimsCount || 0,
-            themeClass: themeClass
+            themeClass: themeClass,
+            equippedTheme: profileState.equippedTheme || 'classic'
         });
     }
 }
@@ -792,14 +854,29 @@ async function handleAIProgress(num, roomRef) {
 function updateGameUI(currentNum) {
     // Update main display
     const currentEl = document.getElementById('current-number');
+    if (currentEl) currentEl.innerText = currentNum || '--';
 
-    const display = document.getElementById('current-number');
-    display.innerText = currentNum;
+    // Highlight on 90-Number Bingo Board
+    if (currentNum > 0) {
+        const cell = document.getElementById(`bingo-cell-${currentNum}`);
+        if (cell) cell.classList.add('drawn');
+    }
 
-    // Pulse animation
-    display.parentElement.style.animation = 'none';
-    display.parentElement.offsetHeight; // trigger reflow
-    display.parentElement.style.animation = 'drawNum 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    // Comprehensive sync for drawn numbers (useful for people joining/refreshing)
+    state.drawnNumbers.forEach(num => {
+        if (num > 0) {
+            const cell = document.getElementById(`bingo-cell-${num}`);
+            if (cell) cell.classList.add('drawn');
+        }
+    });
+
+    // Pulse animation for current number
+    const circle = document.querySelector('.current-num-circle');
+    if (circle) {
+        circle.style.animation = 'none';
+        circle.offsetHeight; // trigger reflow
+        circle.style.animation = 'drawNum 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    }
 
     // Voice Announcement
     speakNumber(currentNum);
@@ -808,16 +885,36 @@ function updateGameUI(currentNum) {
     const historyContainer = document.getElementById('last-numbers-container');
     if (historyContainer) {
         historyContainer.innerHTML = '';
-        // Last 5 numbers (excluding the very current one if needed, or including it)
-        // Usually history is what came BEFORE.
         const history = state.drawnNumbers.slice(-6, -1);
         history.reverse().forEach(num => {
+            if (num <= 0) return;
             const span = document.createElement('div');
             span.className = 'history-num';
             span.innerText = num;
             historyContainer.appendChild(span);
         });
     }
+}
+
+function initBingoBoard() {
+    const board = document.getElementById('bingo-board');
+    if (!board) return;
+    board.innerHTML = '';
+    for (let i = 1; i <= 90; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'bingo-cell';
+        cell.id = `bingo-cell-${i}`;
+        cell.innerText = i;
+        board.appendChild(cell);
+    }
+
+    // Catch-up if numbers were already drawn
+    state.drawnNumbers.forEach(num => {
+        if (num > 0) {
+            const cell = document.getElementById(`bingo-cell-${num}`);
+            if (cell) cell.classList.add('drawn');
+        }
+    });
 }
 
 // --- Game Logic ---
@@ -829,7 +926,7 @@ function generateTombalaCard() {
     // Columns: 1-9, 10-19, 20-29, ... 80-90
 
     // Step 1: Initialize empty 3x9 grid
-    let grid = Array(3).fill(null).map(() => Array(9).fill(null));
+    let grid = Array(3).fill(null).map(() => Array(9).fill(0));
 
     // Step 2: Ensure every row has 5 numbers (placeholder count)
     // We need to place 15 numbers in total.
@@ -914,17 +1011,68 @@ function generateTombalaCard() {
     return grid;
 }
 
-function renderCard(grid, containerId) {
+function showCardPicker(onSelected) {
+    const overlay = document.getElementById('card-picker-overlay');
+    const grid = document.getElementById('card-options-grid');
+    const regenBtn = document.getElementById('regenerate-cards-btn');
+
+    grid.innerHTML = '';
+    overlay.classList.remove('hidden');
+
+    const generateOptions = () => {
+        grid.innerHTML = '';
+        for (let i = 0; i < 4; i++) {
+            const cardData = generateTombalaCard();
+            const wrapper = document.createElement('div');
+            wrapper.className = 'option-card-wrapper';
+            wrapper.id = `picker-option-${i}`;
+
+            const cardContainer = document.createElement('div');
+            cardContainer.id = `picker-card-${i}`;
+            cardContainer.className = 'tombala-card';
+
+            wrapper.appendChild(cardContainer);
+            grid.appendChild(wrapper);
+
+            // Render preview (non-clickable, default theme)
+            renderCard(cardData, `picker-card-${i}`, false);
+
+            wrapper.onclick = () => {
+                overlay.classList.add('hidden');
+                regenBtn.onclick = null; // Clean up listener
+                onSelected(cardData);
+            };
+        }
+    };
+
+    generateOptions();
+
+    // Set up regeneration
+    regenBtn.onclick = (e) => {
+        e.stopPropagation();
+        generateOptions();
+        showToast('Cards Refreshed!');
+    };
+}
+
+function renderCard(grid, containerId, canClick = true, themeToApply = null, progress = {}) {
     const container = document.getElementById(containerId);
-    container.innerHTML = '';
+    if (!container) return;
 
     // Apply theme
-    const theme = MARKET_ITEMS.find(i => i.id === (profileState.equippedTheme || 'classic'));
-    if (theme && theme.themeClass) {
-        container.className = `tombala-card ${theme.themeClass}`;
-    } else {
-        container.className = 'tombala-card';
+    const themeId = themeToApply || profileState.equippedTheme || 'classic';
+    const theme = MARKET_ITEMS.find(i => i.id === themeId);
+    const themeClass = theme ? theme.themeClass : '';
+
+    const targetClassName = `tombala-card ${themeClass}`.trim();
+    if (container.className !== targetClassName) {
+        container.className = targetClassName;
     }
+
+    // To prevent total redraw if only progress changed, we can iterate cells
+    // but for simplicity and 15 cells, a clean rebuild is fine AS LONG AS 
+    // the parent wrapper doesn't re-animate.
+    container.innerHTML = '';
 
     grid.forEach((row, rIdx) => {
         const rowDiv = document.createElement('div');
@@ -932,11 +1080,19 @@ function renderCard(grid, containerId) {
 
         row.forEach((num, cIndex) => {
             const cell = document.createElement('div');
-            cell.className = num === null ? 'card-cell empty' : 'card-cell';
-            if (num !== null) {
+            const isMarked = num && progress && progress[num] === true;
+
+            // Robust check for empty: null, undefined, 0, or false
+            const isEmpty = (num === null || num === undefined || num === 0 || num === '');
+
+            cell.className = isEmpty ? 'card-cell empty' : (isMarked ? 'card-cell marked' : 'card-cell');
+
+            if (!isEmpty) {
                 cell.innerText = num;
                 cell.dataset.value = num;
-                cell.addEventListener('click', onCellClick);
+                if (canClick) {
+                    cell.addEventListener('click', onCellClick);
+                }
             }
             rowDiv.appendChild(cell);
         });

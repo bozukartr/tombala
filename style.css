@@ -509,23 +509,121 @@ input:focus {
     }
 }
 
+/* Game Screen Redesign */
+.game-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: calc(var(--safe-top) + 10px) 15px calc(var(--safe-bottom) + 10px);
+    gap: 15px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.game-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.room-info-pill {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+}
+
+.game-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 12px;
+}
+
+.board-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.bingo-board {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 3px;
+}
+
+.bingo-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.2);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.bingo-cell.drawn {
+    background: var(--accent);
+    color: #1a1a2e;
+    box-shadow: 0 0 15px var(--accent);
+    transform: scale(1.15);
+    z-index: 2;
+}
+
+.current-num-circle {
+    width: 60px;
+    height: 60px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+    position: relative;
+}
+
 #current-number {
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     font-weight: 900;
     color: #1a1a2e;
 }
 
-.pot-badge {
-    background: linear-gradient(135deg, #ffd700, #ff8800);
-    color: #000;
-    padding: 6px 14px;
-    border-radius: 50px;
-    font-weight: 800;
-    font-size: 0.85rem;
+.history-tape {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 6px;
-    box-shadow: 0 4px 12px rgba(255, 136, 0, 0.3);
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.history-tape .history-num {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
+.hud-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding-left: 5px;
+}
+
+.player-card-section,
+.opponents-section {
+    width: 100%;
 }
 
 .tombala-card {
@@ -546,36 +644,49 @@ input:focus {
     position: relative;
 }
 
-.card-row.completed::after {
-    content: '⭐ ⭐ ⭐ ⭐ ⭐';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 1.2rem;
-    color: #ffd700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.4);
-    pointer-events: none;
-    z-index: 10;
-    white-space: nowrap;
-    animation: starPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    opacity: 0;
+.card-row.completed {
+    position: relative;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3), inset 0 0 10px rgba(255, 215, 0, 0.2);
+    border-radius: 6px;
+    z-index: 1;
+    overflow: hidden;
+    animation: rowGlow 2s infinite alternate ease-in-out;
 }
 
-@keyframes starPop {
-    0% {
-        transform: translate(-50%, -50%) scale(0);
-        opacity: 0;
-    }
+.card-row.completed::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right,
+            rgba(255, 215, 0, 0) 0%,
+            rgba(255, 215, 0, 0.6) 50%,
+            rgba(255, 215, 0, 0) 100%);
+    transform: skewX(-25deg);
+    animation: shimmer 2s infinite;
+    pointer-events: none;
+    z-index: 2;
+}
 
-    50% {
-        transform: translate(-50%, -50%) scale(1.5);
-        opacity: 1;
+@keyframes shimmer {
+    0% {
+        left: -100%;
     }
 
     100% {
-        transform: translate(-50%, -50%) scale(1.2);
-        opacity: 0.9;
+        left: 200%;
+    }
+}
+
+@keyframes rowGlow {
+    0% {
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+    }
+
+    100% {
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
     }
 }
 
@@ -709,69 +820,160 @@ input:focus {
 /* Opponents Mini-Cards */
 
 
+/* Opponents Full-Size Cards (2-Column Grid) */
 .opponents-progress {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 15px;
     margin-top: 20px;
-    padding-bottom: 20px;
+    padding-bottom: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
 }
 
-.opponent-card-mini {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    padding: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+.opponent-card-wrapper {
+    width: 100%;
+    animation: fadeIn 0.5s ease both;
 }
 
-.opponent-header {
+.opponent-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 5px;
-    gap: 4px;
+    margin-bottom: 6px;
+    padding: 0 5px;
 }
 
 .opponent-name {
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
     color: var(--accent);
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex: 1;
 }
 
 .opponent-stars {
     display: flex;
-    gap: 2px;
-}
-
-.star {
+    gap: 3px;
     font-size: 0.7rem;
-    filter: drop-shadow(0 0 2px gold);
-    animation: fadeIn 0.3s ease;
 }
 
-.mini-grid {
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    gap: 2px;
+/* Reduced size for opponent cards */
+.opponent-card-wrapper .tombala-card {
+    padding: 3px;
+    border-radius: 8px;
 }
 
-.mini-cell {
-    aspect-ratio: 1;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 1px;
+.opponent-card-wrapper .card-cell {
+    font-size: 0.6rem;
+    border-radius: 2px;
 }
 
-.mini-cell.has-num {
-    background: rgba(255, 255, 255, 0.15);
+.opponent-card-wrapper .card-row.completed::after {
+    font-size: 0.7rem;
 }
 
-.mini-cell.marked {
-    background: var(--accent);
+/* Card Selection Modal */
+#card-picker-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
 }
+
+.card-picker-content {
+    width: 95%;
+    max-width: 600px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: #1a1a2e;
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-picker-content h3 {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.card-picker-content p {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--text-muted);
+}
+
+.card-options-grid {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-right: 10px;
+}
+
+.option-card-wrapper {
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 3px solid transparent;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+}
+
+.option-card-wrapper:hover {
+    transform: scale(1.02);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.option-card-wrapper.selected {
+    border-color: var(--accent);
+    background: rgba(0, 255, 255, 0.1);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+.card-picker-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#regenerate-cards-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 12px;
+    font-size: 1rem;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#regenerate-cards-btn:active {
+    transform: scale(0.98);
+}
+
+#regenerate-cards-btn i {
+    transition: transform 0.5s ease;
+}
+
+#regenerate-cards-btn:hover i {
+    transform: rotate(180deg);
+}
+
 
 /* Game Over Screen */
 .game-over-content {
@@ -815,4 +1017,217 @@ input:focus {
     50% {
         transform: translateY(-15px) scale(1.1);
     }
+}
+
+/* Professional Waiting Room (Lobby) */
+.lobby-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: calc(var(--safe-top) + 10px) 15px var(--safe-bottom);
+    background: radial-gradient(circle at top right, rgba(0, 255, 255, 0.05), transparent),
+        radial-gradient(circle at bottom left, rgba(255, 0, 255, 0.05), transparent);
+}
+
+.lobby-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 30px;
+}
+
+.lobby-title-area {
+    margin: 0 auto;
+}
+
+.lobby-id-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.banner-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 2px;
+}
+
+.banner-code {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+#display-room-code {
+    font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 3px;
+    font-size: 1.2rem;
+}
+
+.btn-copy-bubble {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.btn-copy-bubble:hover {
+    background: var(--accent);
+    color: #1a1a2e;
+    transform: translateY(-2px);
+}
+
+.lobby-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 12px;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.lobby-main-card {
+    /* Removed flex: 1 to prevent stretching to bottom */
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 25px;
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    margin-bottom: 40px;
+    /* Space from bottom */
+}
+
+.waiting-prompt {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.waiting-prompt h3 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0.5));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.waiting-prompt p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.player-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.player-slot {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.player-slot.filled {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.player-slot.filled.is-host {
+    border-color: var(--accent);
+    background: rgba(0, 255, 255, 0.05);
+}
+
+.slot-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 0.8rem;
+}
+
+.player-slot.filled .slot-avatar {
+    background: var(--accent);
+    color: #1a1a2e;
+}
+
+.slot-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.slot-info span {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.player-slot.filled .slot-info span {
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.host-badge {
+    font-size: 0.6rem;
+    background: var(--accent);
+    color: #1a1a2e;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 800;
+    text-transform: uppercase;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+.lobby-footer {
+    margin-top: auto;
+    text-align: center;
+}
+
+.host-waiting-msg {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+#start-game-btn {
+    width: 100%;
+    max-width: 250px;
+    margin-bottom: 15px;
 }

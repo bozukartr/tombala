@@ -49,6 +49,23 @@
             </div>
         </div>
 
+        <!-- Card Selection Picker Modal -->
+        <div id="card-picker-overlay" class="hidden">
+            <div class="card-picker-content">
+                <h3>Select Your Lucky Card</h3>
+                <p>Choose one of the 4 random cards to play with.</p>
+                <div id="card-options-grid" class="card-options-grid">
+                    <!-- 4 cards will be injected here -->
+                </div>
+                <div class="card-picker-actions">
+                    <button id="regenerate-cards-btn" class="btn-secondary">
+                        <i class="fas fa-sync-alt"></i> Regenerate Cards
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
         <!-- Login Screen -->
         <section id="login-screen" class="screen active">
             <div class="login-content">
@@ -111,57 +128,94 @@
 
         <!-- Waiting Room Screen -->
         <section id="waiting-screen" class="screen hidden">
-            <header class="top-bar">
-                <button class="btn-icon" id="back-to-lobby" title="Leave">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="room-code-group">
-                    <span class="room-code-display">Room: <strong id="display-room-code">-----</strong></span>
-                    <button id="copy-code-btn" class="btn-mini">
-                        <i class="far fa-copy"></i>
+            <div class="lobby-wrapper">
+                <header class="lobby-header">
+                    <button class="btn-icon" id="back-to-lobby" title="Leave">
+                        <i class="fas fa-chevron-left"></i>
                     </button>
+                    <div class="lobby-title-area">
+                        <div class="lobby-id-banner">
+                            <span class="banner-label">ROOM ID</span>
+                            <div class="banner-code">
+                                <span id="display-room-code">-----</span>
+                                <button id="copy-code-btn" class="btn-copy-bubble" title="Copy Code">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lobby-status-indicator">
+                        <span id="waiting-status">1/6</span>
+                        <i class="fas fa-users"></i>
+                    </div>
+                </header>
+
+                <div class="lobby-main-card">
+                    <div class="waiting-prompt">
+                        <h3>Waiting for players...</h3>
+                        <p>The game will begin when the host starts.</p>
+                    </div>
+
+                    <div class="player-slots-grid" id="waiting-player-list">
+                        <!-- 6 slots will be managed by JS -->
+                    </div>
+
+                    <div class="lobby-footer">
+                        <button id="start-game-btn" class="btn-primary hidden">
+                            <i class="fas fa-play"></i> Start Match
+                        </button>
+                        <p class="host-waiting-msg">Waiting for host to start...</p>
+                    </div>
                 </div>
-            </header>
-            <div class="waiting-content">
-                <h3>Waiting for players...</h3>
-                <div class="player-list" id="waiting-player-list">
-                    <!-- Players will be added here -->
-                </div>
-                <p class="status-text" id="waiting-status">1/6 Players</p>
-                <button id="start-game-btn" class="btn-primary hidden">Start Game</button>
             </div>
         </section>
 
         <!-- Game Screen -->
         <section id="game-screen" class="screen hidden">
-            <header class="game-header">
-                <div class="header-top">
+            <div class="game-content-wrapper">
+                <div class="game-top-row">
                     <button class="btn-icon" id="leave-game-btn" title="Leave Game">
                         <i class="fas fa-times"></i>
                     </button>
-                </div>
-
-                <div class="header-main">
-                    <div class="current-number-display">
-                        <span id="current-number">--</span>
+                    <div class="pot-badge">
+                        💰 <span id="game-pot">0</span>
                     </div>
-                    <div class="last-numbers" id="last-numbers-container">
-                        <!-- Last drawn numbers -->
+                    <div class="room-info-pill">
+                        Room: <span id="game-room-code">-</span>
                     </div>
                 </div>
-            </header>
 
-            <div class="game-board-container">
-                <div class="tombala-card" id="my-card">
-                    <!-- 3 rows of numbers -->
+                <div class="game-dashboard-grid">
+                    <!-- Bingo Board 1-90 -->
+                    <div class="board-card bingo-board-card">
+                        <div id="bingo-board" class="bingo-board">
+                            <!-- 1-90 injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Current Number & History -->
+                    <div class="board-card draw-card">
+                        <div class="current-num-circle">
+                            <span id="current-number">--</span>
+                        </div>
+                        <div class="history-tape" id="last-numbers-container">
+                        </div>
+                    </div>
                 </div>
-            </div>
 
+                <!-- Player Card Section -->
+                <div class="player-card-section">
+                    <div class="hud-label">MY CARD</div>
+                    <div id="my-card" class="tombala-card"></div>
+                </div>
 
-
-            <!-- Other players progress -->
-            <div class="opponents-progress" id="opponents-container">
-                <!-- Opponent mini-cards will be injected here -->
+                <!-- Opponents Section -->
+                <div class="opponents-section">
+                    <div class="hud-label">OPPONENTS</div>
+                    <div class="opponents-progress" id="opponents-container">
+                        <!-- Opponents injected by JS -->
+                    </div>
+                </div>
             </div>
         </section>
 
