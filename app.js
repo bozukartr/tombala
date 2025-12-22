@@ -354,6 +354,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function enterWaitingRoom(code) {
+        // Initialize ready state in Firebase
+        firebase.database().ref(`rooms/${code}/playerData/${state.user.uid}`).update({
+            isReady: false
+        });
         showScreen('waiting-screen');
         listenToRoom(code);
     }
@@ -398,6 +402,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.getElementById('ready-btn').addEventListener('click', () => {
+        if (!state.roomCode || !state.user) return;
+
+        const readyBtn = document.getElementById('ready-btn');
+        const isCurrentlyReady = readyBtn.classList.contains('ready');
+        const newReadyState = !isCurrentlyReady;
+
+        firebase.database().ref(`rooms/${state.roomCode}/playerData/${state.user.uid}`).update({
+            isReady: newReadyState
+        });
+
+        if (newReadyState) {
+            if (navigator.vibrate) navigator.vibrate(30);
+            showToast("You are Ready!");
+        }
+    });
+
     // Logout
     document.getElementById('logout-btn').addEventListener('click', () => {
         firebase.auth().signOut().then(() => {
@@ -430,14 +451,29 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Only host can restart');
             return;
         }
-        await firebase.database().ref('rooms/' + state.roomCode).update({
+
+        const roomRef = firebase.database().ref('rooms/' + state.roomCode);
+        const snapshot = await roomRef.once('value');
+        const data = snapshot.val();
+
+        const updates = {
             status: 'waiting',
             drawnNumbers: [0],
             currentNumber: null,
-            winner: null,
-            playerData: null // Reset progress/cards
-        });
-        state.card = [];
+            winner: null
+        };
+
+        // Reset players' ready state and progress but KEEP THEIR CARDS
+        if (data.playerData) {
+            Object.keys(data.playerData).forEach(uid => {
+                updates[`playerData/${uid}/isReady`] = false;
+                updates[`playerData/${uid}/progress`] = {};
+                updates[`playerData/${uid}/claimsCount`] = 0;
+            });
+        }
+
+        await roomRef.update(updates);
+
         state.drawnNumbers = [];
         showScreen('waiting-screen');
     });
@@ -469,7 +505,13 @@ function listenToRoom(roomId) {
                 slot.className = p ? (p.uid === data.host ? 'player-slot filled is-host' : 'player-slot filled') : 'player-slot';
 
                 if (p) {
+                    const isReady = data.playerData && data.playerData[p.uid] && data.playerData[p.uid].isReady;
+                    if (isReady) slot.classList.add('is-ready');
+
                     slot.innerHTML = `
+                        <div class="ready-indicator">
+                            <i class="fas fa-check"></i>
+                        </div>
                         <div class="slot-avatar">
                             <i class="fas fa-user"></i>
                         </div>
@@ -493,15 +535,37 @@ function listenToRoom(roomId) {
 
             document.getElementById('waiting-status').innerText = `${players.length}/6`;
 
-            // Host Start Button Visibility
+            // Ready Button Logic & Host Start Button Visibility
             const startBtn = document.getElementById('start-game-btn');
+            const readyBtn = document.getElementById('ready-btn');
             const waitMsg = document.querySelector('.host-waiting-msg');
 
+            // Count ready players (excluding host)
+            const otherPlayers = players.filter(p => p.uid !== data.host);
+            const readyCount = otherPlayers.filter(p => data.playerData && data.playerData[p.uid] && data.playerData[p.uid].isReady).length;
+            const allReady = otherPlayers.every(p => data.playerData && data.playerData[p.uid] && data.playerData[p.uid].isReady);
+
             if (state.isHost) {
-                if (startBtn) startBtn.classList.remove('hidden');
+                if (startBtn) {
+                    startBtn.classList.remove('hidden');
+                    startBtn.disabled = !allReady;
+                    startBtn.innerHTML = allReady ? '<i class="fas fa-play"></i> START MATCH' : `<i class="fas fa-clock"></i> WAITING READY (${readyCount}/${otherPlayers.length})`;
+                }
+                if (readyBtn) readyBtn.classList.add('hidden');
                 if (waitMsg) waitMsg.classList.add('hidden');
             } else {
                 if (startBtn) startBtn.classList.add('hidden');
+                if (readyBtn) {
+                    readyBtn.classList.remove('hidden');
+                    const myReady = data.playerData && data.playerData[state.user.uid] && data.playerData[state.user.uid].isReady;
+                    if (myReady) {
+                        readyBtn.classList.add('ready');
+                        readyBtn.innerText = 'READY!';
+                    } else {
+                        readyBtn.classList.remove('ready');
+                        readyBtn.innerText = "I'M READY";
+                    }
+                }
                 if (waitMsg) waitMsg.classList.remove('hidden');
             }
 
@@ -535,7 +599,6 @@ function listenToRoom(roomId) {
 
             // Sync Reset (Back to waiting screen)
             if (data.status === 'waiting' && state.currentScreen === 'game-over-screen') {
-                state.card = [];
                 state.drawnNumbers = [];
                 showScreen('waiting-screen');
             }
@@ -558,7 +621,13 @@ function listenToRoom(roomId) {
             const playerData = data.playerData || {};
             const opponentsContainer = document.getElementById('opponents-container');
             if (opponentsContainer) {
-                const currentUids = Object.keys(playerData).filter(uid => !state.user || uid !== state.user.uid);
+                const currentUids = Object.keys(playerData).filter(uid => {
+                    if (state.user && uid === state.user.uid) return false;
+                    const p = playerData[uid];
+                    // Don't show players who don't have a card (left before game start)
+                    if (data.status === 'playing' && (!p.card || p.card.length === 0)) return false;
+                    return true;
+                });
 
                 // 1. Remove wrappers for players who left
                 const existingWrappers = opponentsContainer.querySelectorAll('.opponent-card-wrapper');
@@ -582,9 +651,15 @@ function listenToRoom(roomId) {
 
                     let wrapper = opponentsContainer.querySelector(`.opponent-card-wrapper[data-uid="${uid}"]`);
 
+                    // Check if player is still in the room players list
+                    const isActive = players.some(pl => pl.uid === uid);
+                    const isBot = p.isBot === true;
+                    // Bots are never "left". Humans are left if not active or explicitly marked.
+                    const isLeft = !isBot && (p.hasLeft || !isActive);
+
                     if (!wrapper) {
                         wrapper = document.createElement('div');
-                        wrapper.className = 'opponent-card-wrapper';
+                        wrapper.className = isLeft ? 'opponent-card-wrapper is-left' : 'opponent-card-wrapper';
                         wrapper.dataset.uid = uid;
 
                         wrapper.innerHTML = `
@@ -596,6 +671,10 @@ function listenToRoom(roomId) {
                         `;
                         opponentsContainer.appendChild(wrapper);
                     }
+
+                    // Dynamic class update for existing wrappers
+                    if (isLeft) wrapper.classList.add('is-left');
+                    else wrapper.classList.remove('is-left');
 
                     // Update Stars
                     const starsContainer = document.getElementById(`stars-${uid}`);
@@ -661,6 +740,10 @@ async function leaveRoom() {
                 if (data.host === state.user.uid) {
                     updates.host = players[0].uid;
                 }
+
+                // Explicitly mark as left in playerData
+                updates[`playerData/${state.user.uid}/hasLeft`] = true;
+
                 await roomRef.update(updates);
             }
         }
