@@ -124,7 +124,7 @@ function selectNumberForEditor(num, btn) {
     if (profileState.selectedNumbers.includes(num)) return;
 
     if (profileState.selectedNumbers.length >= 15) {
-        showToast('Maximum 15 numbers allowed!');
+        showToast(getTxt('max_15_numbers'));
         return;
     }
 
@@ -136,7 +136,7 @@ function selectNumberForEditor(num, btn) {
     }).length;
 
     if (colCount >= 3) {
-        showToast(`Column ${colIdx + 1} is full (max 3 numbers)!`);
+        showToast(getTxt('column_full', { num: colIdx + 1 }));
         return;
     }
 
@@ -266,7 +266,7 @@ function distributeNumbersProfessionally(numbers) {
 
 async function saveCustomCard() {
     if (profileState.selectedNumbers.length !== 15) {
-        showToast('You must select exactly 15 numbers!');
+        showToast(getTxt('must_select_15'));
         return;
     }
 
@@ -274,7 +274,7 @@ async function saveCustomCard() {
 
     try {
         await firebase.database().ref(`users/${state.user.uid}/profile/customCard`).set(profileState.selectedNumbers);
-        showToast('Card saved successfully!');
+        showToast(getTxt('card_saved'));
         showScreen('profile-screen');
     } catch (e) {
         showToast('Error saving card: ' + e.message);
@@ -287,7 +287,7 @@ document.getElementById('open-profile-btn').addEventListener('click', () => {
         showScreen('profile-screen');
         updateProfileUI();
     } else {
-        showToast('Please sign in with Google to access profile features.');
+        showToast(getTxt('profile_login_msg'));
     }
 });
 
@@ -332,7 +332,7 @@ function renderShop() {
             <div class="item-preview ${item.themeClass}" style="background: rgba(255,255,255,0.1)">${item.name}</div>
             <span class="item-name">${item.name}</span>
             <span class="item-price"><i class="fas fa-coins"></i> ${item.price}</span>
-            <button class="btn-mini buy-btn" data-id="${item.id}">Buy</button>
+            <button class="btn-mini buy-btn" data-id="${item.id}">${getTxt('buy_btn', { default: 'Buy' })}</button>
         `;
 
         card.querySelector('.buy-btn').onclick = () => buyItem(item);
@@ -354,7 +354,7 @@ function renderInventory() {
         card.innerHTML = `
             <div class="item-preview ${item.themeClass}" style="background: rgba(255,255,255,0.1)">${item.name}</div>
             <span class="item-name">${item.name}</span>
-            ${isEquipped ? '<span class="status-badge equipped">Equipped</span>' : '<button class="btn-mini equip-btn">Equip</button>'}
+            ${isEquipped ? `<span class="status-badge equipped">${getTxt('equipped_badge', { default: 'Equipped' })}</span>` : `<button class="btn-mini equip-btn">${getTxt('equip_btn', { default: 'Equip' })}</button>`}
         `;
 
         const equipBtn = card.querySelector('.equip-btn');
@@ -366,11 +366,11 @@ function renderInventory() {
 
 async function buyItem(item) {
     if (profileState.coins < item.price) {
-        showToast('Not enough coins!');
+        showToast(getTxt('not_enough_coins'));
         return;
     }
 
-    showConfirmModal('Buy Theme', `Buy ${item.name} for ${item.price} coins?`, async () => {
+    showConfirmModal(getTxt('modal_confirm_title'), getTxt('buy_theme_confirm', { name: item.name, price: item.price }), async () => {
         try {
             const userRef = firebase.database().ref(`users/${state.user.uid}/profile`);
             const newInventory = [...profileState.inventory, item.id];
@@ -380,7 +380,7 @@ async function buyItem(item) {
                 inventory: newInventory,
                 coins: newCoins
             });
-            showToast('Purchased successfully!');
+            showToast(getTxt('purchased_success'));
         } catch (e) {
             showToast('Error: ' + e.message);
         }
@@ -391,7 +391,7 @@ async function equipTheme(themeId) {
     if (!state.user) return;
     try {
         await firebase.database().ref(`users/${state.user.uid}/profile/equippedTheme`).set(themeId);
-        showToast('Theme equipped!');
+        showToast(getTxt('theme_equipped'));
     } catch (e) {
         showToast('Error equipping!');
     }
@@ -426,12 +426,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            showConfirmModal('Reset Stats', 'This will delete all your marking history. Continue?', async () => {
+            showConfirmModal(getTxt('modal_confirm_title'), getTxt('reset_stats_confirm'), async () => {
                 if (state.user) {
                     await firebase.database().ref(`users/${state.user.uid}/stats`).remove();
-                    showToast('Stats reset.');
+                    showToast(getTxt('stats_reset_toast'));
                 }
-            });
+            }, null, getTxt('confirm'), getTxt('cancel'));
         });
     }
 });

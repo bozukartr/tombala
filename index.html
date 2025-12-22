@@ -40,11 +40,11 @@
         <!-- Custom Modal Container -->
         <div id="modal-overlay" class="hidden">
             <div class="modal-content">
-                <h3 id="modal-title">Confirm</h3>
-                <p id="modal-message">Are you sure?</p>
+                <h3 id="modal-title" data-i18n="modal_confirm_title">Confirm</h3>
+                <p id="modal-message" data-i18n="modal_confirm_msg">Are you sure?</p>
                 <div class="modal-actions">
-                    <button id="modal-cancel-btn" class="btn-secondary">Cancel</button>
-                    <button id="modal-confirm-btn" class="btn-primary">Confirm</button>
+                    <button id="modal-cancel-btn" class="btn-secondary" data-i18n="cancel">Cancel</button>
+                    <button id="modal-confirm-btn" class="btn-primary" data-i18n="confirm">Confirm</button>
                 </div>
             </div>
         </div>
@@ -52,13 +52,13 @@
         <!-- Card Selection Picker Modal -->
         <div id="card-picker-overlay" class="hidden">
             <div class="card-picker-content">
-                <h3>Select Your Lucky Card</h3>
-                <p>Choose one of the 4 random cards to play with.</p>
+                <h3 data-i18n="select_lucky_card">Select Your Lucky Card</h3>
+                <p data-i18n="select_lucky_card_desc">Choose one of the 4 random cards to play with.</p>
                 <div id="card-options-grid" class="card-options-grid">
                     <!-- 4 cards will be injected here -->
                 </div>
                 <div class="card-picker-actions">
-                    <button id="regenerate-cards-btn" class="btn-secondary">
+                    <button id="regenerate-cards-btn" class="btn-secondary" data-i18n="regenerate_cards">
                         <i class="fas fa-sync-alt"></i> Regenerate Cards
                     </button>
                 </div>
@@ -70,13 +70,13 @@
         <section id="login-screen" class="screen active">
             <div class="login-content">
                 <h1 class="logo">TOMBALA</h1>
-                <p class="subtitle">Herkesin Çinkosu Kendine</p>
+                <p class="subtitle" data-i18n="login_subtitle">Herkesin Çinkosu Kendine</p>
                 <div class="login-card">
                     <button class="btn-primary" id="google-login-btn">
-                        <i class="fab fa-google"></i> Sign in with Google
+                        <i class="fab fa-google"></i> <span data-i18n="google_login">Sign in with Google</span>
                     </button>
                     <button class="btn-secondary" id="guest-login-btn">
-                        <i class="fas fa-user-ninja"></i> Play as Guest
+                        <i class="fas fa-user-ninja"></i> <span data-i18n="guest_login">Play as Guest</span>
                     </button>
                 </div>
             </div>
@@ -94,33 +94,60 @@
                         <span class="currency">💰</span>
                         <span id="user-balance">0</span>
                     </div>
+                    <button class="btn-icon" id="toggle-lang-btn" title="Switch Language">
+                        <span id="current-lang">TR</span>
+                    </button>
                     <button class="btn-icon" id="open-profile-btn" title="Profile">
                         <i class="fas fa-user-circle"></i>
                     </button>
-                    <button class="btn-icon-text" id="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+                    <button class="btn-icon" id="logout-btn" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </div>
             </header>
 
             <div class="lobby-content">
-                <h2>Game Mode</h2>
-                <div class="mode-selector">
-                    <div class="mode-card selected" data-mode="free">
-                        <h3>Free Play</h3>
-                        <p>Just for fun</p>
+                <div class="lobby-glass-card">
+                    <div class="lobby-section-header">
+                        <h2 data-i18n="select_game_mode">Select Game Mode</h2>
+                        <p data-i18n="choose_way_to_play">Choose your way to play & win!</p>
                     </div>
-                    <div class="mode-card" data-mode="betting">
-                        <h3>Betting</h3>
-                        <p>50 Coins Entry</p>
-                    </div>
-                </div>
 
-                <div class="action-buttons">
-                    <button id="create-room-btn" class="btn-primary">Create Room</button>
-                    <div class="join-room-container">
-                        <input type="text" id="room-code-input" placeholder="Enter Room Code" maxlength="5">
-                        <button id="join-room-btn" class="btn-secondary">Join</button>
+                    <div class="mode-selector">
+                        <div class="mode-card selected" data-mode="free">
+                            <div class="mode-icon"><i class="fas fa-play-circle"></i></div>
+                            <div class="mode-details">
+                                <h3 data-i18n="free_play">Free Play</h3>
+                                <p data-i18n="free_play_desc">Just for fun, no risk</p>
+                            </div>
+                            <div class="selection-status"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                        <div class="mode-card" data-mode="betting">
+                            <div class="mode-icon"><i class="fas fa-coins"></i></div>
+                            <div class="mode-details">
+                                <h3 data-i18n="betting">Betting</h3>
+                                <p data-i18n="betting_desc">50 Coins • High Stakes</p>
+                            </div>
+                            <div class="selection-status"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                    </div>
+
+                    <div class="lobby-divider"><span data-i18n="or">OR</span></div>
+
+                    <div class="action-buttons">
+                        <button id="create-room-btn" class="btn btn-primary lobby-cta">
+                            <i class="fas fa-plus-square"></i> <span data-i18n="create_private_room">Create Private
+                                Room</span>
+                        </button>
+
+                        <div class="join-room-container">
+                            <div class="glass-input-wrapper">
+                                <i class="fas fa-key"></i>
+                                <input type="text" id="room-code-input" placeholder="Room Code" maxlength="5"
+                                    data-i18n-placeholder="room_code_placeholder">
+                            </div>
+                            <button id="join-room-btn" class="btn btn-secondary join-cta" data-i18n="join">Join</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -135,7 +162,7 @@
                     </button>
                     <div class="lobby-title-area">
                         <div class="lobby-id-banner">
-                            <span class="banner-label">ROOM ID</span>
+                            <span class="banner-label" data-i18n="room_id">ROOM ID</span>
                             <div class="banner-code">
                                 <span id="display-room-code">-----</span>
                                 <button id="copy-code-btn" class="btn-copy-bubble" title="Copy Code">
@@ -152,8 +179,8 @@
 
                 <div class="lobby-main-card">
                     <div class="waiting-prompt">
-                        <h3>Waiting for players...</h3>
-                        <p>The game will begin when the host starts.</p>
+                        <h3 data-i18n="waiting_for_players">Waiting for players...</h3>
+                        <p data-i18n="game_will_begin_desc">The game will begin when the host starts.</p>
                     </div>
 
                     <div class="player-slots-grid" id="waiting-player-list">
@@ -161,9 +188,11 @@
                     </div>
 
                     <div class="lobby-footer">
-                        <button id="start-game-btn" class="btn btn-primary hidden">START GAME</button>
-                        <button id="ready-btn" class="btn btn-secondary hidden">I'M READY</button>
-                        <p id="host-waiting-msg" class="waiting-prompt">Waiting for host to start...</p>
+                        <button id="start-game-btn" class="btn btn-primary hidden" data-i18n="start_game">START
+                            GAME</button>
+                        <button id="ready-btn" class="btn btn-secondary hidden" data-i18n="im_ready">I'M READY</button>
+                        <p id="host-waiting-msg" class="waiting-prompt" data-i18n="waiting_for_host">Waiting for host to
+                            start...</p>
                     </div>
                 </div>
             </div>
@@ -179,8 +208,11 @@
                     <div class="pot-badge">
                         💰 <span id="game-pot">0</span>
                     </div>
+                    <button class="btn-icon" id="toggle-voice-btn" title="Toggle Voice">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
                     <div class="room-info-pill">
-                        Room: <span id="game-room-code">-</span>
+                        <span data-i18n="room_label">Room:</span> <span id="game-room-code">-</span>
                     </div>
                 </div>
 
@@ -204,13 +236,13 @@
 
                 <!-- Player Card Section -->
                 <div class="player-card-section">
-                    <div class="hud-label">MY CARD</div>
+                    <div class="hud-label" data-i18n="my_card">MY CARD</div>
                     <div id="my-card" class="tombala-card"></div>
                 </div>
 
                 <!-- Opponents Section -->
                 <div class="opponents-section">
-                    <div class="hud-label">OPPONENTS</div>
+                    <div class="hud-label" data-i18n="opponents">OPPONENTS</div>
                     <div class="opponents-progress" id="opponents-container">
                         <!-- Opponents injected by JS -->
                     </div>
@@ -222,17 +254,17 @@
         <section id="game-over-screen" class="screen hidden">
             <div class="game-over-content">
                 <div class="winner-trophy">🏆</div>
-                <h1 id="game-over-title">Game Over</h1>
-                <p id="winner-announcement">Winner: <span>--</span></p>
+                <h1 id="game-over-title" data-i18n="game_over">Game Over</h1>
+                <p id="winner-announcement"><span data-i18n="winner_label">Winner:</span> <span>--</span></p>
                 <div class="prizes-won hidden">
                     <!-- Prize details -->
                 </div>
                 <div class="action-buttons">
                     <button id="play-again-btn" class="btn-primary">
-                        <i class="fas fa-redo"></i> Play Again
+                        <i class="fas fa-redo"></i> <span data-i18n="play_again">Play Again</span>
                     </button>
                     <button id="exit-to-lobby-btn" class="btn-secondary">
-                        <i class="fas fa-home"></i> Main Menu
+                        <i class="fas fa-home"></i> <span data-i18n="main_menu">Main Menu</span>
                     </button>
                 </div>
             </div>
@@ -244,7 +276,7 @@
                 <button class="btn-icon" id="profile-to-lobby">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <h3>My Profile</h3>
+                <h3 data-i18n="my_profile">My Profile</h3>
                 <div style="width:40px"></div>
             </header>
             <div class="profile-content">
@@ -254,25 +286,25 @@
                 </div>
 
                 <div class="profile-tabs">
-                    <button class="tab-btn active" data-tab="stats-tab">Stats</button>
-                    <button class="tab-btn" data-tab="shop-tab">Shop</button>
-                    <button class="tab-btn" data-tab="inventory-tab">Inventory</button>
+                    <button class="tab-btn active" data-tab="stats-tab" data-i18n="stats">Stats</button>
+                    <button class="tab-btn" data-tab="shop-tab" data-i18n="shop">Shop</button>
+                    <button class="tab-btn" data-tab="inventory-tab" data-i18n="inventory">Inventory</button>
                 </div>
 
                 <div id="stats-tab" class="tab-content active">
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <span class="stat-label">Total Coins</span>
+                            <span class="stat-label" data-i18n="total_coins">Total Coins</span>
                             <span class="stat-value" id="profile-coins-val">1000</span>
                         </div>
                         <div class="stat-card">
-                            <span class="stat-label">Lucky Number</span>
+                            <span class="stat-label" data-i18n="lucky_number">Lucky Number</span>
                             <span class="stat-value" id="lucky-number-val">--</span>
                         </div>
                     </div>
 
                     <div class="lucky-stats-container">
-                        <h4>Most Marked Numbers</h4>
+                        <h4 data-i18n="most_marked_numbers">Most Marked Numbers</h4>
                         <div id="stats-bar-chart" class="stats-chart">
                             <!-- Bars will be injected here -->
                         </div>
@@ -280,10 +312,10 @@
 
                     <div class="profile-actions">
                         <button id="edit-custom-card-btn" class="btn-secondary">
-                            <i class="fas fa-edit"></i> Customize My Card
+                            <i class="fas fa-edit"></i> <span data-i18n="customize_my_card">Customize My Card</span>
                         </button>
                         <button id="reset-stats-btn" class="btn-danger">
-                            <i class="fas fa-trash-alt"></i> Reset Stats
+                            <i class="fas fa-trash-alt"></i> <span data-i18n="reset_stats">Reset Stats</span>
                         </button>
                     </div>
                 </div>
@@ -308,14 +340,15 @@
                 <button class="btn-icon" id="editor-to-profile">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <h3>Custom Card Editor</h3>
+                <h3 data-i18n="custom_card_editor">Custom Card Editor</h3>
                 <div class="top-bar-actions">
-                    <button class="btn-mini btn-outline" id="clear-editor-btn">Clear</button>
-                    <button class="btn-mini" id="save-custom-card-btn">Save</button>
+                    <button class="btn-mini btn-outline" id="clear-editor-btn" data-i18n="clear">Clear</button>
+                    <button class="btn-mini" id="save-custom-card-btn" data-i18n="save">Save</button>
                 </div>
             </header>
             <div class="editor-container">
-                <p class="editor-instructions">Select exactly 15 numbers (5 per row) to create your lucky card.</p>
+                <p class="editor-instructions" data-i18n="editor_instructions">Select exactly 15 numbers (5 per row) to
+                    create your lucky card.</p>
                 <div class="editor-grid" id="editor-grid">
                     <!-- 3x9 grid will be generated here -->
                 </div>

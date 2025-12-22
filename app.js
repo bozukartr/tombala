@@ -7,8 +7,221 @@ const state = {
     isHost: false,
     players: [],
     card: [],
-    drawnNumbers: []
+    drawnNumbers: [],
+    lang: localStorage.getItem('gameLang') || 'tr'
 };
+
+const i18n = {
+    tr: {
+        modal_confirm_title: 'Onayla',
+        modal_confirm_msg: 'Emin misiniz?',
+        cancel: 'İptal',
+        confirm: 'Onayla',
+        select_lucky_card: 'Şanslı Kartını Seç',
+        select_lucky_card_desc: 'Oynamak için 4 rastgele karttan birini seç.',
+        regenerate_cards: 'Kartları Yenile',
+        login_subtitle: 'Herkesin Çinkosu Kendine',
+        google_login: 'Google ile Giriş Yap',
+        guest_login: 'Misafir Olarak Oyna',
+        select_game_mode: 'Oyun Modu Seç',
+        choose_way_to_play: 'Nasıl oynayacağını seç ve kazan!',
+        free_play: 'Ücretsiz',
+        free_play_desc: 'Sadece Eğlence',
+        betting: 'Bahisli',
+        betting_desc: '50 Coin',
+        or: 'VEYA',
+        create_private_room: 'Oda Oluştur',
+        room_code_placeholder: 'Oda Kodu',
+        join: 'Katıl',
+        room_id: 'ODA ID',
+        waiting_for_players: 'Oyuncular bekleniyor...',
+        game_will_begin_desc: 'Oyun yönetici başlattığında başlayacaktır.',
+        start_game: 'OYUNU BAŞLAT',
+        im_ready: 'HAZIRIM',
+        waiting_for_host: 'Yöneticinin başlatması bekleniyor...',
+        room_label: 'Oda:',
+        my_card: 'KARTIM',
+        opponents: 'RAKİPLER',
+        game_over: 'Oyun Bitti',
+        winner_label: 'Kazanan:',
+        play_again: 'Tekrar Oyna',
+        main_menu: 'Ana Menü',
+        my_profile: 'Profilim',
+        stats: 'İstatistik',
+        shop: 'Mağaza',
+        inventory: 'Envanter',
+        total_coins: 'Toplam Coin',
+        lucky_number: 'Şanslı Numara',
+        most_marked_numbers: 'En Çok İşaretlenenler',
+        customize_my_card: 'Kartımı Özelleştir',
+        reset_stats: 'İstatistikleri Sıfırla',
+        custom_card_editor: 'Kart Düzenleyici',
+        clear: 'Temizle',
+        save: 'Kaydet',
+        editor_instructions: 'Kartını oluşturmak için tam 15 sayı (her satıra 5) seç.',
+        // Toasts & Dynamic
+        playing_as_guest: 'Misafir olarak oynanıyor',
+        welcome_user: 'Hoş geldin {name}!',
+        voice_enabled: 'Sesli duyurular açıldı',
+        voice_muted: 'Ses kapandı',
+        ready_toast: 'Hazırsın!',
+        code_copied: 'Oda kodu kopyalandı!',
+        leave_room_confirm: 'Odadan ayrılmak istiyor musunuz?',
+        quit_game_confirm: 'Mevcut oyundan ayrılmak istediğinize emin misiniz?',
+        exit_to_lobby_confirm: 'Ana menüye dönmek istediğinize emin misiniz? İlerlemeniz kaybolacaktır.',
+        not_enough_coins: 'Yetersiz bakiye!',
+        room_not_found: 'Oda bulunamadı',
+        game_started: 'Oyun zaten başladı',
+        room_full: 'Oda dolu',
+        invalid_code: 'Geçersiz oda kodu',
+        only_host_restart: 'Sadece yönetici yeniden başlatabilir',
+        please_login: 'Lütfen önce giriş yapın',
+        buy_theme_confirm: '{name} temasını {price} coine almak istiyor musunuz?',
+        purchased_success: 'Başarıyla satın alındı!',
+        theme_equipped: 'Tema kuşanıldı!',
+        card_selection_title: 'Kart Seçimi',
+        use_custom_card_msg: 'Bu oyun için kendi şanslı kartını kullanmak ister misin?',
+        use_custom: 'Özel Kart',
+        random_card: 'Rastgele',
+        solo_play_msg: 'Tek başına mı? 3 yapay zeka rakip katıldı!',
+        reset_stats_confirm: 'Bu işlem tüm işaretleme geçmişinizi silecektir. Devam edilsin mi?',
+        stats_reset_toast: 'İstatistikler sıfırlandı.',
+        profile_login_msg: 'Profil özelliklerine erişmek için lütfen Google ile giriş yapın.',
+        max_15_numbers: 'En fazla 15 sayı seçebilirsiniz!',
+        column_full: 'Sütun {num} dolu (en fazla 3 sayı)!',
+        must_select_15: 'Tam olarak 15 sayı seçmelisiniz!',
+        card_saved: 'Kart başarıyla kaydedildi!',
+        selection_cleared: 'Seçimler temizlendi.',
+        host_badge: 'Yönetici',
+        waiting_dots: 'Bekleniyor...',
+        start_match: 'MAÇI BAŞLAT',
+        waiting_ready: 'HAZIR BEKLENİYOR',
+        ready_exclaim: 'HAZIR!',
+        buy_btn: 'Satın Al',
+        equipped_badge: 'Kuşanıldı',
+        equip_btn: 'Kuşan'
+    },
+    en: {
+        modal_confirm_title: 'Confirm',
+        modal_confirm_msg: 'Are you sure?',
+        cancel: 'Cancel',
+        confirm: 'Confirm',
+        select_lucky_card: 'Select Your Lucky Card',
+        select_lucky_card_desc: 'Choose one of the 4 random cards to play with.',
+        regenerate_cards: 'Regenerate Cards',
+        login_subtitle: 'Every Bingo is Unique',
+        google_login: 'Sign in with Google',
+        guest_login: 'Play as Guest',
+        select_game_mode: 'Select Game Mode',
+        choose_way_to_play: 'Choose your way to play & win!',
+        free_play: 'Free Play',
+        free_play_desc: 'Just for fun, no risk',
+        betting: 'Betting',
+        betting_desc: '50 Coins Entry • High Stakes',
+        or: 'OR',
+        create_private_room: 'Create Private Room',
+        room_code_placeholder: 'Room Code',
+        join: 'Join',
+        room_id: 'ROOM ID',
+        waiting_for_players: 'Waiting for players...',
+        game_will_begin_desc: 'The game will begin when the host starts.',
+        start_game: 'START GAME',
+        im_ready: "I'M READY",
+        waiting_for_host: 'Waiting for host to start...',
+        room_label: 'Room:',
+        my_card: 'MY CARD',
+        opponents: 'OPPONENTS',
+        game_over: 'Game Over',
+        winner_label: 'Winner:',
+        play_again: 'Play Again',
+        main_menu: 'Main Menu',
+        my_profile: 'My Profile',
+        stats: 'Stats',
+        shop: 'Shop',
+        inventory: 'Inventory',
+        total_coins: 'Total Coins',
+        lucky_number: 'Lucky Number',
+        most_marked_numbers: 'Most Marked Numbers',
+        customize_my_card: 'Customize My Card',
+        reset_stats: 'Reset Stats',
+        custom_card_editor: 'Card Editor',
+        clear: 'Clear',
+        save: 'Save',
+        editor_instructions: 'Select exactly 15 numbers (5 per row) to create your card.',
+        // Toasts & Dynamic
+        playing_as_guest: 'Playing as Guest',
+        welcome_user: 'Welcome {name}!',
+        voice_enabled: 'Voice announcements enabled',
+        voice_muted: 'Voice muted',
+        ready_toast: 'You are Ready!',
+        code_copied: 'Room code copied!',
+        leave_room_confirm: 'Do you want to leave this room?',
+        quit_game_confirm: 'Are you sure you want to leave the current game?',
+        exit_to_lobby_confirm: 'Are you sure you want to exit to the lobby? Your progress will be lost.',
+        not_enough_coins: 'Not enough coins!',
+        room_not_found: 'Room not found',
+        game_started: 'Game already started',
+        room_full: 'Room is full',
+        invalid_code: 'Invalid Room Code',
+        only_host_restart: 'Only host can restart',
+        please_login: 'Please login first',
+        buy_theme_confirm: 'Buy {name} for {price} coins?',
+        purchased_success: 'Purchased successfully!',
+        theme_equipped: 'Theme equipped!',
+        card_selection_title: 'Card Selection',
+        use_custom_card_msg: 'Use your custom lucky card for this game?',
+        use_custom: 'Use Custom',
+        random_card: 'Random Card',
+        solo_play_msg: 'Solo Play? 3 AI Opponents joined!',
+        reset_stats_confirm: 'This will delete all your marking history. Continue?',
+        stats_reset_toast: 'Stats reset.',
+        profile_login_msg: 'Please sign in with Google to access profile features.',
+        max_15_numbers: 'Maximum 15 numbers allowed!',
+        column_full: 'Column {num} is full (max 3 numbers)!',
+        must_select_15: 'You must select exactly 15 numbers!',
+        card_saved: 'Card saved successfully!',
+        selection_cleared: 'Selection cleared.',
+        host_badge: 'Host',
+        waiting_dots: 'Waiting...',
+        start_match: 'START MATCH',
+        waiting_ready: 'WAITING READY',
+        ready_exclaim: 'READY!',
+        buy_btn: 'Buy',
+        equipped_badge: 'Equipped',
+        equip_btn: 'Equip'
+    }
+};
+
+function getTxt(key, params = {}) {
+    let text = i18n[state.lang][key] || key;
+    for (const [k, v] of Object.entries(params)) {
+        text = text.replace(`{${k}}`, v);
+    }
+    return text;
+}
+
+function updateLanguageUI() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.innerText = getTxt(key);
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = getTxt(key);
+    });
+
+    // Update titles for icon buttons if they have them
+    document.querySelectorAll('[title]').forEach(el => {
+        // This is a bit manual but consistent
+        if (el.id === 'open-profile-btn') el.title = getTxt('my_profile');
+        if (el.id === 'logout-btn') el.title = getTxt('confirm'); // or Logout if key exists
+        if (el.id === 'toggle-lang-btn') el.title = getTxt('confirm'); // Switch Language
+    });
+
+    const langEl = document.getElementById('current-lang');
+    if (langEl) langEl.innerText = state.lang.toUpperCase();
+}
 
 // DOM Elements
 const screens = document.querySelectorAll('.screen');
@@ -75,7 +288,7 @@ function updateUserInfo() {
 }
 
 // Voice Synthesis
-let speechEnabled = true;
+let speechEnabled = localStorage.getItem('speechEnabled') !== 'false';
 let turkishVoice = null;
 
 // Warm-up voices
@@ -90,6 +303,42 @@ if (window.speechSynthesis) {
     }
     initVoices();
 }
+
+// Voice Toggle Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    updateLanguageUI(); // Initial translation
+
+    const langBtn = document.getElementById('toggle-lang-btn');
+    if (langBtn) {
+        langBtn.addEventListener('click', () => {
+            state.lang = state.lang === 'tr' ? 'en' : 'tr';
+            localStorage.setItem('gameLang', state.lang);
+            updateLanguageUI();
+            initVoices(); // Refresh voice selection
+            showToast(getTxt('confirm')); // Or just Lang changed toast
+        });
+    }
+
+    const voiceBtn = document.getElementById('toggle-voice-btn');
+    if (voiceBtn) {
+        voiceBtn.addEventListener('click', () => {
+            speechEnabled = !speechEnabled;
+            localStorage.setItem('speechEnabled', speechEnabled);
+
+            const icon = voiceBtn.querySelector('i');
+            if (speechEnabled) {
+                voiceBtn.classList.remove('muted');
+                icon.className = 'fas fa-volume-up';
+                showToast(getTxt('voice_enabled'));
+                speakNumber(state.lang === 'tr' ? 'Siz' : 'You'); // Small test
+            } else {
+                voiceBtn.classList.add('muted');
+                icon.className = 'fas fa-volume-mute';
+                showToast(getTxt('voice_muted'));
+            }
+        });
+    }
+});
 
 // Mobile speech unlocker
 let speechUnlocked = false;
@@ -119,13 +368,16 @@ function speakNumber(num) {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(num.toString());
-    utterance.lang = 'tr-TR';
+    utterance.lang = state.lang === 'tr' ? 'tr-TR' : 'en-US';
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
     // Use cached voice or try finding it again
-    if (!turkishVoice) initVoices();
-    if (turkishVoice) {
+    if (!turkishVoice || state.lang === 'en') {
+        const voices = window.speechSynthesis.getVoices();
+        const targetLang = state.lang === 'tr' ? 'tr' : 'en';
+        utterance.voice = voices.find(v => v.lang.toLowerCase().includes(targetLang));
+    } else {
         utterance.voice = turkishVoice;
     }
 
@@ -146,6 +398,21 @@ function showScreen(screenId) {
     // small delay to allow display:block to apply before opacity transition
     setTimeout(() => target.classList.add('active'), 10);
     state.currentScreen = screenId;
+
+    // Update voice icon state when entering game screen
+    if (screenId === 'game-screen') {
+        const voiceBtn = document.getElementById('toggle-voice-btn');
+        if (voiceBtn) {
+            const icon = voiceBtn.querySelector('i');
+            if (speechEnabled) {
+                voiceBtn.classList.remove('muted');
+                icon.className = 'fas fa-volume-up';
+            } else {
+                voiceBtn.classList.add('muted');
+                icon.className = 'fas fa-volume-mute';
+            }
+        }
+    }
 }
 
 // Event Listeners
@@ -167,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         updateUserInfo();
         showScreen('lobby-screen');
-        showToast('Playing as Guest');
+        showToast(getTxt('playing_as_guest'));
     });
     loginBtn.addEventListener('click', () => {
         const provider = new firebase.auth.GoogleAuthProvider();
@@ -186,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUserInfo();
                 initProfile(state.user); // Initialize profile data from JS
                 showScreen('lobby-screen');
-                showToast(`Welcome ${user.displayName}!`);
+                showToast(getTxt('welcome_user', { name: user.displayName }));
             }).catch(error => {
                 console.error(error);
                 showToast(error.message);
@@ -206,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createRoomBtn.addEventListener('click', async () => {
         console.log('Create Room clicked', state.user);
         if (!state.user) {
-            showToast('Please login first');
+            showToast(getTxt('please_login'));
             return;
         }
         try {
@@ -237,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // IF user has custom card, ask to use it
             if (!state.user.isGuest && profileState.customCard && profileState.customCard.length === 15) {
-                showConfirmModal('Card Selection', 'Use your custom lucky card for this game?', () => {
+                showConfirmModal(getTxt('card_selection_title'), getTxt('use_custom_card_msg'), () => {
                     state.card = distributeNumbersProfessionally(profileState.customCard);
                     showScreen('waiting-screen');
                     listenToRoom(code);
@@ -248,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         showScreen('waiting-screen');
                         listenToRoom(code);
                     });
-                }, 'Use Custom', 'Random Card');
+                }, getTxt('use_custom'), getTxt('random_card'));
             } else {
                 // Not using custom or guest, show picker directly
                 showCardPicker((selectedCard) => {
@@ -267,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     joinRoomBtn.addEventListener('click', async () => {
         console.log('Join Room clicked', roomCodeInput.value);
         if (!state.user) {
-            showToast('Please login first');
+            showToast(getTxt('please_login'));
             return;
         }
         const code = roomCodeInput.value;
@@ -279,14 +546,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
                     if (data.status !== 'waiting') {
-                        showToast('Game already started');
+                        showToast(getTxt('game_started'));
                         return;
                     }
 
                     // RDB doesn't have native ArrayUnion, we handle it manually
                     let players = data.players || [];
                     if (players.length >= 6) {
-                        showToast('Room is full');
+                        showToast(getTxt('room_full'));
                         return;
                     }
 
@@ -300,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const joinBet = state.gameMode === 'betting' ? 50 : 0;
 
                     if (!state.user.isGuest && profileState.coins < joinBet) {
-                        showToast('Not enough coins!');
+                        showToast(getTxt('not_enough_coins'));
                         return;
                     }
 
@@ -326,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // IF user has custom card, ask to use it
                     if (!state.user.isGuest && profileState.customCard && profileState.customCard.length === 15) {
-                        showConfirmModal('Card Selection', 'Use your custom lucky card for this game?', () => {
+                        showConfirmModal(getTxt('card_selection_title'), getTxt('use_custom_card_msg'), () => {
                             state.card = distributeNumbersProfessionally(profileState.customCard);
                             enterWaitingRoom(code);
                         }, () => {
@@ -334,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 state.card = selectedCard;
                                 enterWaitingRoom(code);
                             });
-                        }, 'Use Custom', 'Random Card');
+                        }, getTxt('use_custom'), getTxt('random_card'));
                     } else {
                         showCardPicker((selectedCard) => {
                             state.card = selectedCard;
@@ -342,14 +609,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                 } else {
-                    showToast('Room not found');
+                    showToast(getTxt('room_not_found'));
                 }
             } catch (error) {
                 console.error('Join Room Error:', error);
                 showToast('Error: ' + error.message);
             }
         } else {
-            showToast('Invalid Room Code');
+            showToast(getTxt('invalid_code'));
         }
     });
 
@@ -363,9 +630,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('back-to-lobby').addEventListener('click', () => {
-        showConfirmModal('Leave Room', 'Do you want to leave this room?', () => {
+        showConfirmModal(getTxt('modal_confirm_title'), getTxt('leave_room_confirm'), () => {
             leaveRoom();
-        });
+        }, null, getTxt('confirm'), getTxt('cancel'));
     });
 
     document.getElementById('start-game-btn').addEventListener('click', async () => {
@@ -377,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let players = Array.isArray(data.players) ? data.players : Object.values(data.players || {});
 
                 if (players.length === 1) {
-                    showToast('Playing Solo? 3 AI Opponents joined!');
+                    showToast(getTxt('solo_play_msg'));
                     const botNames = ['Bot Master 🤖', 'Lucky Tom 🍀', 'Bingo Pro 🎯'];
                     botNames.forEach((name, idx) => {
                         const botId = 'bot_' + (idx + 1);
@@ -415,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (newReadyState) {
             if (navigator.vibrate) navigator.vibrate(30);
-            showToast("You are Ready!");
+            showToast(getTxt('ready_toast'));
         }
     });
 
@@ -424,7 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
         firebase.auth().signOut().then(() => {
             state.user = null;
             showScreen('login-screen');
-            showToast('Logged out');
+            showToast(getTxt('confirm')); // Or Logout toast
         });
     });
 
@@ -432,15 +699,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copy-code-btn').addEventListener('click', () => {
         const code = document.getElementById('display-room-code').innerText;
         navigator.clipboard.writeText(code).then(() => {
-            showToast('Code copied to clipboard!');
+            showToast(getTxt('code_copied'));
         });
     });
 
     // Leave Game
     document.getElementById('leave-game-btn').addEventListener('click', () => {
-        showConfirmModal('Quit Game', 'Are you sure you want to leave the current game?', () => {
+        showConfirmModal(getTxt('modal_confirm_title'), getTxt('quit_game_confirm'), () => {
             leaveRoom();
-        });
+        }, null, getTxt('confirm'), getTxt('cancel'));
     });
 
 
@@ -448,7 +715,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Game Over Buttons
     document.getElementById('play-again-btn').addEventListener('click', async () => {
         if (!state.isHost) {
-            showToast('Only host can restart');
+            showToast(getTxt('only_host_restart'));
             return;
         }
 
@@ -479,9 +746,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('exit-to-lobby-btn').addEventListener('click', () => {
-        showConfirmModal('Exit Game', 'Are you sure you want to exit to the lobby? Your game progress will be lost.', () => {
+        showConfirmModal(getTxt('modal_confirm_title'), getTxt('exit_to_lobby_confirm'), () => {
             leaveRoom();
-        });
+        }, null, getTxt('confirm'), getTxt('cancel'));
     });
 });
 
@@ -517,7 +784,7 @@ function listenToRoom(roomId) {
                         </div>
                         <div class="slot-info">
                             <span>${p.displayName || 'Guest'}</span>
-                            ${p.uid === data.host ? '<div class="host-badge">Host</div>' : ''}
+                            ${p.uid === data.host ? `<div class="host-badge">${getTxt('host_badge')}</div>` : ''}
                         </div>
                     `;
                 } else {
@@ -526,7 +793,7 @@ function listenToRoom(roomId) {
                             <i class="fas fa-plus"></i>
                         </div>
                         <div class="slot-info">
-                            <span>Waiting...</span>
+                            <span>${getTxt('waiting_dots')}</span>
                         </div>
                     `;
                 }
@@ -549,7 +816,7 @@ function listenToRoom(roomId) {
                 if (startBtn) {
                     startBtn.classList.remove('hidden');
                     startBtn.disabled = !allReady;
-                    startBtn.innerHTML = allReady ? '<i class="fas fa-play"></i> START MATCH' : `<i class="fas fa-clock"></i> WAITING READY (${readyCount}/${otherPlayers.length})`;
+                    startBtn.innerHTML = allReady ? `<i class="fas fa-play"></i> ${getTxt('start_match')}` : `<i class="fas fa-clock"></i> ${getTxt('waiting_ready')} (${readyCount}/${otherPlayers.length})`;
                 }
                 if (readyBtn) readyBtn.classList.add('hidden');
                 if (waitMsg) waitMsg.classList.add('hidden');
@@ -560,10 +827,10 @@ function listenToRoom(roomId) {
                     const myReady = data.playerData && data.playerData[state.user.uid] && data.playerData[state.user.uid].isReady;
                     if (myReady) {
                         readyBtn.classList.add('ready');
-                        readyBtn.innerText = 'READY!';
+                        readyBtn.innerText = getTxt('ready_exclaim');
                     } else {
                         readyBtn.classList.remove('ready');
-                        readyBtn.innerText = "I'M READY";
+                        readyBtn.innerText = getTxt('im_ready');
                     }
                 }
                 if (waitMsg) waitMsg.classList.remove('hidden');
