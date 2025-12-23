@@ -1028,6 +1028,10 @@ async function leaveRoom() {
             players = players.filter(p => p.uid !== state.user.uid);
 
             if (players.length === 0) {
+                // If betting room and hasn't started, refund the last player (usually host)
+                if (data.pot > 0 && data.status === 'waiting') {
+                    await updateUserBalance(100, 'Entry Fee Refund (Room Closed)');
+                }
                 // Delete room if empty
                 await roomRef.remove();
             } else {
@@ -1592,25 +1596,28 @@ function checkClaims() {
 
 // Safer balance update helper
 function updateUserBalance(amount, reason = '') {
-    if (!state.user || state.user.isGuest) return;
+    if (!state.user || state.user.isGuest) return Promise.resolve();
 
     console.log(`[Balance] Updating by ${amount}. Reason: ${reason}`);
     const balanceRef = firebase.database().ref(`users/${state.user.uid}/profile/coins`);
 
-    balanceRef.transaction(current => {
-        const next = (current || 0) + amount;
-        return next;
-    }, (error, committed, snapshot) => {
-        if (error) {
-            console.error('[Balance] Transaction failed:', error);
-        } else if (committed) {
-            console.log(`[Balance] New value: ${snapshot.val()}`);
-            // Force update profileState if needed (though it usually syncs via profile.js)
-            if (typeof profileState !== 'undefined') {
-                profileState.coins = snapshot.val();
-                if (window.updateProfileUI) window.updateProfileUI();
+    return new Promise((resolve, reject) => {
+        balanceRef.transaction(current => {
+            const next = (current || 0) + amount;
+            return next;
+        }, (error, committed, snapshot) => {
+            if (error) {
+                console.error('[Balance] Transaction failed:', error);
+                reject(error);
+            } else {
+                console.log(`[Balance] Committed: ${committed}. New value: ${snapshot.val()}`);
+                if (committed && typeof profileState !== 'undefined') {
+                    profileState.coins = snapshot.val();
+                    if (window.updateProfileUI) window.updateProfileUI();
+                }
+                resolve(committed);
             }
-        }
+        });
     });
 }
 
