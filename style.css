@@ -579,11 +579,25 @@ input:focus {
 
 /* Hover Effects */
 @media (hover: hover) {
-    .mode-card:hover:not(.selected) {
+    .mode-card:hover:not(.selected):not(.locked) {
         background: rgba(255, 255, 255, 0.05);
         border-color: rgba(255, 255, 255, 0.2);
         transform: translateY(-2px);
     }
+}
+
+.mode-card.locked {
+    opacity: 0.6;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+
+.lock-overlay {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: var(--primary);
+    font-size: 0.8rem;
 }
 
 .lobby-divider {
@@ -595,6 +609,41 @@ input:focus {
     font-size: 0.75rem;
     font-weight: 800;
     letter-spacing: 2px;
+}
+
+/* Reward Alert HUD */
+.reward-alert {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    background: rgba(233, 69, 96, 0.95);
+    color: white;
+    padding: 20px 40px;
+    border-radius: 50px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    z-index: 10001;
+    box-shadow: 0 0 50px rgba(233, 69, 96, 0.6);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.reward-alert.active {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+#confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9998;
 }
 
 .lobby-divider::before,
@@ -790,7 +839,7 @@ input:focus {
 .bingo-cell.drawn {
     background: var(--accent);
     color: #1a1a2e;
-    box-shadow: 0 0 15px var(--accent);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.8);
     transform: scale(1.15);
     z-index: 2;
 }

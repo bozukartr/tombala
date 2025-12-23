@@ -28,7 +28,7 @@ const i18n = {
         free_play: 'Ücretsiz',
         free_play_desc: 'Sadece Eğlence',
         betting: 'Bahisli',
-        betting_desc: '50 Coin',
+        betting_desc: '100 ₺',
         or: 'VEYA',
         create_private_room: 'Oda Oluştur',
         room_code_placeholder: 'Oda Kodu',
@@ -99,7 +99,11 @@ const i18n = {
         ready_exclaim: 'HAZIR!',
         buy_btn: 'Satın Al',
         equipped_badge: 'Kuşanıldı',
-        equip_btn: 'Kuşan'
+        equip_btn: 'Kuşan',
+        guest_bet_locked: 'Bahisli oynamak için giriş yapmalısın!',
+        first_zinc_won: '1. Çinko: {name} (50 ₺)',
+        second_zinc_won: '2. Çinko: {name} (50 ₺)',
+        tombala_won: 'Tombala: {name} ({amount} ₺)'
     },
     en: {
         modal_confirm_title: 'Confirm',
@@ -117,7 +121,7 @@ const i18n = {
         free_play: 'Free Play',
         free_play_desc: 'Just for fun, no risk',
         betting: 'Betting',
-        betting_desc: '50 Coins Entry • High Stakes',
+        betting_desc: '100 ₺ Entry • High Stakes',
         or: 'OR',
         create_private_room: 'Create Private Room',
         room_code_placeholder: 'Room Code',
@@ -188,7 +192,11 @@ const i18n = {
         ready_exclaim: 'READY!',
         buy_btn: 'Buy',
         equipped_badge: 'Equipped',
-        equip_btn: 'Equip'
+        equip_btn: 'Equip',
+        guest_bet_locked: 'Login to play with bets!',
+        first_zinc_won: '1st Cinko: {name} (50 ₺)',
+        second_zinc_won: '2nd Cinko: {name} (50 ₺)',
+        tombala_won: 'Tombala: {name} ({amount} ₺)'
     }
 };
 
@@ -482,6 +490,16 @@ document.addEventListener('DOMContentLoaded', () => {
             state.isHost = true;
 
             console.log('Creating room in Realtime DB...', code);
+            const betAmount = state.gameMode === 'betting' ? 100 : 0;
+            if (betAmount > 0) {
+                if (profileState.coins < betAmount) {
+                    showToast(getTxt('not_enough_coins'));
+                    return;
+                }
+                // Deduct balance FIRST
+                await updateUserBalance(-betAmount, 'Host Entry Fee');
+            }
+
             const roomRef = firebase.database().ref('rooms/' + code);
 
             await roomRef.set({
@@ -489,9 +507,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 host: state.user.uid,
                 status: 'waiting',
                 players: [state.user],
-                drawnNumbers: [0], // Initial dummy to avoid array issues or leave empty? RDB arrays are tricky.
+                drawnNumbers: [0],
                 currentNumber: null,
-                pot: state.gameMode === 'betting' ? 50 : 0
+                pot: betAmount,
+                claims: {
+                    firstCinkoBy: null,
+                    secondCinkoBy: null
+                }
             });
 
             document.getElementById('display-room-code').innerText = code;
@@ -550,35 +572,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
 
-                    // RDB doesn't have native ArrayUnion, we handle it manually
-                    let players = data.players || [];
-                    if (players.length >= 6) {
-                        showToast(getTxt('room_full'));
+                    // Strict Guest Block for Betting Rooms
+                    const isBettingRoom = (data.pot > 0);
+                    if (isBettingRoom && state.user.isGuest) {
+                        showToast(getTxt('guest_bet_locked'));
                         return;
                     }
 
-                    // Check if already in
-                    if (players.some(p => p.uid === state.user.uid)) {
-                        console.log('Player already in room');
-                    } else {
-                        players.push(state.user);
-                    }
-
-                    const joinBet = state.gameMode === 'betting' ? 50 : 0;
-
+                    const joinBet = isBettingRoom ? 100 : 0;
                     if (!state.user.isGuest && profileState.coins < joinBet) {
                         showToast(getTxt('not_enough_coins'));
                         return;
                     }
 
-                    await roomRef.update({
-                        players: players,
-                        pot: (data.pot || 0) + joinBet
+                    // Use transaction to update players and pot safely
+                    await roomRef.transaction((currentData) => {
+                        if (currentData) {
+                            if (currentData.status !== 'waiting') return; // Game started while joining
+                            if (!currentData.players) currentData.players = [];
+
+                            // Check if room is full
+                            if (currentData.players.length >= 6) return;
+
+                            // Check if already in
+                            if (!currentData.players.some(p => p.uid === state.user.uid)) {
+                                currentData.players.push(state.user);
+                                if (isBettingRoom) {
+                                    currentData.pot = (currentData.pot || 0) + 100;
+                                }
+                            }
+                        }
+                        return currentData;
                     });
 
                     // Deduct coins if betting
                     if (!state.user.isGuest && joinBet > 0) {
-                        firebase.database().ref(`users/${state.user.uid}/profile/coins`).set(profileState.coins - joinBet);
+                        updateUserBalance(-joinBet, 'Player Entry Fee');
                     }
 
                     state.roomCode = code;
@@ -1011,6 +1040,13 @@ async function leaveRoom() {
                 // Explicitly mark as left in playerData
                 updates[`playerData/${state.user.uid}/hasLeft`] = true;
 
+                // REFUND CHECK: If betting room and hasn't started, refund fee
+                if (data.pot > 0 && data.status === 'waiting') {
+                    await updateUserBalance(100, 'Entry Fee Refund');
+                    // Decrease pot for others
+                    updates.pot = Math.max(0, data.pot - 100);
+                }
+
                 await roomRef.update(updates);
             }
         }
@@ -1031,14 +1067,22 @@ function showGameOver(winner) {
     if (winnerDisplay) winnerDisplay.innerText = winner.displayName;
 
     // If I am the winner, credit coins
-    if (state.user && winner.uid === state.user.uid && !state.user.isGuest) {
-        // Fetch current pot from firebase one last time or use local (risky if delayed)
-        firebase.database().ref(`rooms/${state.roomCode}/pot`).once('value').then(snap => {
-            const pot = snap.val() || 0;
-            if (pot > 0) {
-                const newTotal = profileState.coins + pot;
-                firebase.database().ref(`users/${state.user.uid}/profile/coins`).set(newTotal);
-                showToast(`You won ${pot} coins!`);
+    if (state.user && winner.uid === state.user.uid && !state.user.isGuest && !state.winnerRewardHandled) {
+        state.winnerRewardHandled = true; // Prevent double prize
+
+        const roomRef = firebase.database().ref(`rooms/${state.roomCode}`);
+        roomRef.once('value').then(snap => {
+            const data = snap.val();
+            if (!data) return;
+
+            const players = Array.isArray(data.players) ? data.players : Object.values(data.players || {});
+
+            // Winner's logic: (Total Players) * 100 ₺ -> Winner gets the full pot value as income
+            const winnerReward = players.length * 100;
+
+            if (winnerReward > 0) {
+                updateUserBalance(winnerReward, 'Tombala Winner');
+                showRewardAlert(getTxt('tombala_won', { name: 'Siz', amount: winnerReward }));
             }
         });
     }
@@ -1188,6 +1232,15 @@ async function handleAIProgress(num, roomRef) {
                         rowsCompleted++;
                     }
                 });
+
+                if (rowsCompleted >= 1 && !data.claims?.firstCinkoBy) {
+                    updates[`claims/firstCinkoBy`] = uid;
+                    updates[`claims/firstCinkoName`] = p.displayName;
+                }
+                if (rowsCompleted >= 2 && !data.claims?.secondCinkoBy) {
+                    updates[`claims/secondCinkoBy`] = uid;
+                    updates[`claims/secondCinkoName`] = p.displayName;
+                }
 
                 updates[`playerData/${uid}/claimsCount`] = rowsCompleted;
 
@@ -1500,13 +1553,125 @@ function checkClaims() {
             claimsCount: rowsCompleted
         });
 
-        // AUTO WIN: if 3 rows completed, update Firebase winner
-        if (rowsCompleted === 3) {
-            firebase.database().ref('rooms/' + state.roomCode).update({
-                winner: state.user
-            });
-        }
+        // TIERED REWARDS CHECK
+        const roomRef = firebase.database().ref('rooms/' + state.roomCode);
+        roomRef.transaction((data) => {
+            if (data && data.status === 'playing') {
+                const claims = data.claims || {};
+                const updates = {};
+                let payout = 0;
+
+                if (rowsCompleted >= 1 && !claims.firstCinkoBy) {
+                    claims.firstCinkoBy = state.user.uid;
+                    claims.firstCinkoName = state.user.displayName;
+                    payout += 50;
+                    showRewardAlert(getTxt('first_zinc_won', { name: 'Siz' }));
+                }
+                if (rowsCompleted >= 2 && !claims.secondCinkoBy) {
+                    claims.secondCinkoBy = state.user.uid;
+                    claims.secondCinkoName = state.user.displayName;
+                    payout += 50;
+                    showRewardAlert(getTxt('second_zinc_won', { name: 'Siz' }));
+                }
+
+                if (payout > 0) {
+                    data.claims = claims;
+                    // Trigger balance update outside this transaction
+                    setTimeout(() => updateUserBalance(payout, 'Cinko Reward'), 100);
+                }
+
+                // AUTO WIN: if 3 rows completed
+                if (rowsCompleted === 3 && !data.winner) {
+                    data.winner = state.user;
+                }
+                return data;
+            }
+        });
     }
+}
+
+// Safer balance update helper
+function updateUserBalance(amount, reason = '') {
+    if (!state.user || state.user.isGuest) return;
+
+    console.log(`[Balance] Updating by ${amount}. Reason: ${reason}`);
+    const balanceRef = firebase.database().ref(`users/${state.user.uid}/profile/coins`);
+
+    balanceRef.transaction(current => {
+        const next = (current || 0) + amount;
+        return next;
+    }, (error, committed, snapshot) => {
+        if (error) {
+            console.error('[Balance] Transaction failed:', error);
+        } else if (committed) {
+            console.log(`[Balance] New value: ${snapshot.val()}`);
+            // Force update profileState if needed (though it usually syncs via profile.js)
+            if (typeof profileState !== 'undefined') {
+                profileState.coins = snapshot.val();
+                if (window.updateProfileUI) window.updateProfileUI();
+            }
+        }
+    });
+}
+
+// --- Victory Effects (Confetti) ---
+function triggerConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let particles = [];
+    const colors = ['#e94560', '#ffd700', '#4caf50', '#2196f3', '#ffffff'];
+
+    for (let i = 0; i < 150; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height - canvas.height,
+            size: Math.random() * 8 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            speed: Math.random() * 5 + 2,
+            angle: Math.random() * 2 * Math.PI,
+            spin: Math.random() * 0.2 - 0.1
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        particles.forEach(p => {
+            p.y += p.speed;
+            p.x += Math.sin(p.angle) * 2;
+            p.angle += p.spin;
+
+            if (p.y < canvas.height) {
+                alive = true;
+                ctx.fillStyle = p.color;
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                ctx.restore();
+            }
+        });
+
+        if (alive) requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+function showRewardAlert(text) {
+    const alert = document.getElementById('reward-alert-hud');
+    if (!alert) return;
+    alert.innerText = text;
+    alert.classList.add('active');
+    triggerConfetti();
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+    setTimeout(() => {
+        alert.classList.remove('active');
+    }, 4000);
 }
 
 

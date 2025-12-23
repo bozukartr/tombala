@@ -331,7 +331,7 @@ function renderShop() {
         card.innerHTML = `
             <div class="item-preview ${item.themeClass}" style="background: rgba(255,255,255,0.1)">${item.name}</div>
             <span class="item-name">${item.name}</span>
-            <span class="item-price"><i class="fas fa-coins"></i> ${item.price}</span>
+            <span class="item-price"> ${item.price} ₺</span>
             <button class="btn-mini buy-btn" data-id="${item.id}">${getTxt('buy_btn', { default: 'Buy' })}</button>
         `;
 

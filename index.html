@@ -32,7 +32,8 @@
 </head>
 
 <body>
-
+    <canvas id="confetti-canvas"></canvas>
+    <div id="reward-alert-hud" class="reward-alert">1. Çinko!</div>
     <div id="app">
         <!-- Toast Notification Container -->
         <div id="toast-container"></div>
@@ -91,7 +92,7 @@
                 </div>
                 <div class="header-actions">
                     <div class="balance-display" id="lobby-balance-area">
-                        <span class="currency">💰</span>
+                        <span class="currency">₺</span>
                         <span id="user-balance">0</span>
                     </div>
                     <button class="btn-icon" id="toggle-lang-btn" title="Switch Language">
@@ -122,13 +123,14 @@
                             </div>
                             <div class="selection-status"><i class="fas fa-check-circle"></i></div>
                         </div>
-                        <div class="mode-card" data-mode="betting">
+                        <div class="mode-card" data-mode="betting" id="betting-mode-card">
                             <div class="mode-icon"><i class="fas fa-coins"></i></div>
                             <div class="mode-details">
                                 <h3 data-i18n="betting">Betting</h3>
-                                <p data-i18n="betting_desc">50 Coins • High Stakes</p>
+                                <p data-i18n="betting_desc">100 ₺ • High Stakes</p>
                             </div>
                             <div class="selection-status"><i class="fas fa-check-circle"></i></div>
+                            <div class="lock-overlay hidden"><i class="fas fa-lock"></i></div>
                         </div>
                     </div>
 
@@ -206,7 +208,7 @@
                         <i class="fas fa-times"></i>
                     </button>
                     <div class="pot-badge">
-                        💰 <span id="game-pot">0</span>
+                        ₺ <span id="game-pot">0</span>
                     </div>
                     <button class="btn-icon" id="toggle-voice-btn" title="Toggle Voice">
                         <i class="fas fa-volume-up"></i>
@@ -294,8 +296,9 @@
                 <div id="stats-tab" class="tab-content active">
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <span class="stat-label" data-i18n="total_coins">Total Coins</span>
-                            <span class="stat-value" id="profile-coins-val">1000</span>
+                            <i class="fas fa-lira-sign"></i>
+                            <span class="stat-label" data-i18n="total_coins">Total TL</span>
+                            <span class="stat-value" id="profile-coins-val">0</span>
                         </div>
                         <div class="stat-card">
                             <span class="stat-label" data-i18n="lucky_number">Lucky Number</span>
