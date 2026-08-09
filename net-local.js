@@ -117,7 +117,12 @@ function scheduleBots() {
       if (!bot.marked.includes(n)) bot.marked.push(n);
       emit();
       later(() => {
-        if (!state || state.meta.status !== 'playing' || state.claims[id]) return;
+        if (!state || state.meta.status !== 'playing') return;
+        // Yalnızca karara bağlanmamış ilan varken bekle. Eskiden çözülmüş ilan da
+        // burada kalıcı engel oluyordu: 1. çinkoyu alan bot bir daha ilan edemiyor,
+        // 2. çinko ve tombala kimseye kalmıyordu.
+        const own = state.claims[id];
+        if (own && own.valid === undefined) return;
         const st = evaluate(bot.card, bot.marked, state.game.drawn);
         const w = state.winners;
         let type = null;

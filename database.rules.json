@@ -13,8 +13,8 @@
           ".validate": "newData.hasChildren(['hostId', 'status', 'createdAt'])",
           "status": { ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'" },
           "hostId": {
-            "//": "Host bağlantısı koptuysa başka bir oyuncu hostluğu devralabilir.",
-            ".write": "auth != null && (!data.exists() || data.val() === auth.uid || root.child('rooms/' + $code + '/players/' + data.val() + '/connected').val() === false)",
+            "//": "Host bağlantısı koptuysa ya da odadan tamamen çıktıysa başka bir oyuncu hostluğu devralabilir.",
+            ".write": "auth != null && (!data.exists() || data.val() === auth.uid || !root.child('rooms/' + $code + '/players/' + data.val()).exists() || root.child('rooms/' + $code + '/players/' + data.val() + '/connected').val() === false)",
             ".validate": "root.child('rooms/' + $code + '/players/' + newData.val()).exists()"
           }
         },
