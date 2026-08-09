@@ -1,0 +1,61 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      "$code": {
+        "//": "Oda kodunu bilen ve giriş yapmış herkes okuyabilir. rooms listesi okunamaz.",
+        ".read": "auth != null",
+
+        "meta": {
+          ".write": "auth != null && (!data.exists() || data.child('hostId').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['hostId', 'status', 'createdAt'])",
+          "status": { ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'" },
+          "hostId": {
+            "//": "Host bağlantısı koptuysa başka bir oyuncu hostluğu devralabilir.",
+            ".write": "auth != null && (!data.exists() || data.val() === auth.uid || root.child('rooms/' + $code + '/players/' + data.val() + '/connected').val() === false)",
+            ".validate": "root.child('rooms/' + $code + '/players/' + newData.val()).exists()"
+          }
+        },
+
+        "players": {
+          "$uid": {
+            "//": "Oyuncu yalnızca kendi düğümünü yazar.",
+            ".write": "auth != null && $uid === auth.uid",
+            ".validate": "data.exists() || newData.parent().numChildren() <= 6",
+            "card": {
+              "//": "Oyun başladıktan sonra kart değiştirilemez.",
+              ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 120 && root.child('rooms/' + $code + '/meta/status').val() === 'lobby')"
+            },
+            "marked": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 12" },
+            "connected": { ".validate": "newData.isBoolean()" },
+            "$other": { ".validate": "newData.isString() || newData.isBoolean() || newData.isNumber()" }
+          }
+        },
+
+        "game": {
+          "//": "Sayıları yalnızca host çeker.",
+          ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid",
+          "drawn": { ".validate": "newData.isString() && newData.val().length <= 350" }
+        },
+
+        "winners": {
+          "//": "Kazananları yalnızca host yazar; istemcinin iddiası tek başına yeterli değildir.",
+          ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid"
+        },
+
+        "claims": {
+          ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid",
+          "$uid": {
+            "//": "Oyuncu kendi ilanını açar; sonucu (valid) host yazar.",
+            ".write": "auth != null && ($uid === auth.uid || root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid)",
+            "type": { ".validate": "newData.val() === 'cinko1' || newData.val() === 'cinko2' || newData.val() === 'tombala'" },
+            "valid": { ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid" }
+          }
+        }
+      }
+    }
+  }
+}

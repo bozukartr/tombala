@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="theme-color" content="#17102B" />
+<meta name="description" content="Arkadaşlarınla oda kurup oynadığın online tombala." />
+<title>Tombala</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<canvas id="fx-canvas" aria-hidden="true"></canvas>
+
+<main id="app">
+
+  <!-- ================= ANA EKRAN ================= -->
+  <section class="screen is-active" id="s-home">
+    <div class="stack">
+      <h1 class="wordmark" aria-label="Tombala">
+        <span class="tile tile--sm">T</span><span class="tile tile--sm">O</span><span class="tile tile--sm">M</span><span class="tile tile--sm">B</span><span class="tile tile--sm">A</span><span class="tile tile--sm">L</span><span class="tile tile--sm">A</span>
+      </h1>
+      <p class="lede">Odayı kur, 5 haneli kodu paylaş, 2–6 kişiyle oyna.</p>
+
+      <div class="panel">
+        <label class="field">
+          <span class="field__label">Adın</span>
+          <input id="in-name" type="text" maxlength="12" placeholder="Adını yaz" autocomplete="nickname" />
+        </label>
+        <div class="field">
+          <span class="field__label">Simgen</span>
+          <div class="picker" id="avatar-picker" role="radiogroup" aria-label="Simge seç"></div>
+        </div>
+        <div class="field">
+          <span class="field__label">Rengin</span>
+          <div class="picker picker--colors" id="color-picker" role="radiogroup" aria-label="Renk seç"></div>
+        </div>
+      </div>
+
+      <div class="stack stack--tight">
+        <button class="btn btn--primary" id="b-create">Oda kur</button>
+        <button class="btn" id="b-goto-join">Odaya katıl</button>
+        <button class="btn btn--ghost" id="b-local">Tek cihazda dene</button>
+      </div>
+      <p class="note" id="net-note" hidden></p>
+    </div>
+  </section>
+
+  <!-- ================= KATILMA ================= -->
+  <section class="screen" id="s-join">
+    <div class="stack">
+      <button class="back" data-back="s-home" aria-label="Geri">←</button>
+      <h2 class="h2">Oda kodu</h2>
+      <p class="lede">Odayı kuran kişideki 5 haneli kodu gir.</p>
+      <div class="code-input" id="code-input">
+        <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="1. hane" />
+        <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="2. hane" />
+        <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="3. hane" />
+        <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="4. hane" />
+        <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="5. hane" />
+      </div>
+      <button class="btn btn--primary" id="b-join" disabled>Odaya gir</button>
+    </div>
+  </section>
+
+  <!-- ================= LOBİ ================= -->
+  <section class="screen" id="s-lobby">
+    <div class="stack">
+      <button class="back" id="b-leave" aria-label="Odadan çık">←</button>
+
+      <div class="roomcode" id="roomcode-box">
+        <span class="roomcode__label">Oda kodu</span>
+        <strong class="roomcode__value" id="roomcode-value">—</strong>
+        <div class="row">
+          <button class="btn btn--sm" id="b-copy">Kodu kopyala</button>
+          <button class="btn btn--sm" id="b-share">Paylaş</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h3 class="h3">Oyuncular</h3>
+          <span class="count" id="player-count">0/6</span>
+        </div>
+        <ul class="players" id="lobby-players"></ul>
+      </div>
+
+      <div class="panel" id="host-settings" hidden>
+        <div class="panel__head"><h3 class="h3">Ayarlar</h3></div>
+        <div class="seg" data-setting="drawMode" role="radiogroup" aria-label="Sayı çekme">
+          <button data-value="auto" class="is-on">Otomatik çek</button>
+          <button data-value="manual">Elle çek</button>
+        </div>
+        <div class="seg" data-setting="drawInterval" role="radiogroup" aria-label="Çekim aralığı">
+          <button data-value="3000">3 sn</button>
+          <button data-value="5000" class="is-on">5 sn</button>
+          <button data-value="8000">8 sn</button>
+        </div>
+        <div class="seg" data-setting="autoMark" role="radiogroup" aria-label="İşaretleme">
+          <button data-value="1" class="is-on">Otomatik işaretle</button>
+          <button data-value="0">Elle işaretle</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h3 class="h3">Kartın</h3>
+          <span class="count" id="card-state">Seçilmedi</span>
+        </div>
+        <div id="lobby-card" class="card card--preview"></div>
+        <div class="row">
+          <button class="btn btn--sm" id="b-random-card">Rastgele kart</button>
+          <button class="btn btn--sm" id="b-build-card">Kendim kurayım</button>
+        </div>
+      </div>
+
+      <div class="sticky-actions">
+        <button class="btn" id="b-ready">Hazırım</button>
+        <button class="btn btn--primary" id="b-start" hidden disabled>Oyunu başlat</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= OYUN ================= -->
+  <section class="screen screen--game" id="s-game">
+    <header class="hud">
+      <div class="hud__top">
+        <div class="pouch" id="pouch" aria-hidden="true">
+          <svg viewBox="0 0 48 52" width="42" height="46">
+            <path d="M12 14h24c6 6 8 14 8 22 0 9-9 14-20 14S4 45 4 36c0-8 2-16 8-22z" fill="#3A2A5C" stroke="#54407F" stroke-width="2"/>
+            <path d="M12 14c4-3 8-4 12-4s8 1 12 4" fill="none" stroke="#FFB43D" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="24" cy="34" r="7" fill="#241a3d"/>
+          </svg>
+        </div>
+        <div class="drawn" id="drawn-slot">
+          <div class="tile tile--xl" id="drawn-tile" aria-live="polite">—</div>
+        </div>
+        <div class="hud__meta">
+          <div class="meter"><span id="drawn-count">0</span><small>çekilen</small></div>
+          <div class="meter"><span id="left-count">90</span><small>kalan</small></div>
+          <button class="icon-btn" id="b-sound" aria-label="Sesi aç kapat">🔊</button>
+        </div>
+      </div>
+      <div class="recents" id="recents" aria-label="Son çekilen sayılar"></div>
+      <div class="pstrip" id="pstrip"></div>
+    </header>
+
+    <div class="board">
+      <div id="game-card" class="card"></div>
+      <p class="hint" id="game-hint"></p>
+    </div>
+
+    <footer class="claims">
+      <button class="btn btn--claim" data-claim="cinko1" disabled>1. Çinko</button>
+      <button class="btn btn--claim" data-claim="cinko2" disabled>2. Çinko</button>
+      <button class="btn btn--claim btn--tombala" data-claim="tombala" disabled>Tombala</button>
+      <button class="btn btn--draw" id="b-draw" hidden>Sayı çek</button>
+    </footer>
+  </section>
+
+  <!-- ================= SONUÇ ================= -->
+  <section class="screen" id="s-result">
+    <div class="stack">
+      <h2 class="h2" id="result-title">Oyun bitti</h2>
+      <div class="panel" id="result-list"></div>
+      <div class="sticky-actions">
+        <button class="btn btn--primary" id="b-again" hidden>Tekrar oyna</button>
+        <button class="btn" id="b-home">Ana ekran</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Kart kurma çekmecesi -->
+<div class="sheet" id="builder" hidden>
+  <div class="sheet__panel">
+    <div class="sheet__head">
+      <h3 class="h3">Kartını kur</h3>
+      <span class="count" id="builder-count">Kalan 15</span>
+      <button class="icon-btn" id="b-builder-close" aria-label="Kapat">✕</button>
+    </div>
+    <div class="numgrid" id="numgrid"></div>
+    <p class="warn" id="builder-warn"></p>
+    <div class="row">
+      <button class="btn btn--sm" id="b-builder-clear">Temizle</button>
+      <button class="btn btn--primary btn--sm" id="b-builder-save" disabled>Kartı kullan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
