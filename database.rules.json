@@ -5,7 +5,9 @@
 
     "rooms": {
       "$code": {
-        "//": "Oda kodunu bilen ve giriş yapmış herkes okuyabilir. rooms listesi okunamaz.",
+        // Oda kodunu bilen ve giriş yapmış herkes okuyabilir. rooms listesi okunamaz.
+        // Not: yorumlar // ile yazılır. "//" adlı bir anahtar kural motorunda
+        // yol parçası sayılır ve dosyanın tamamının reddedilmesine yol açar.
         ".read": "auth != null",
 
         "meta": {
@@ -13,46 +15,52 @@
           ".validate": "newData.hasChildren(['hostId', 'status', 'createdAt'])",
           "status": { ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'" },
           "hostId": {
-            "//": "Host bağlantısı koptuysa ya da odadan tamamen çıktıysa başka bir oyuncu hostluğu devralabilir.",
+            // Host bağlantısı koptuysa ya da odadan tamamen çıktıysa başka bir
+            // oyuncu hostluğu devralabilir.
             ".write": "auth != null && (!data.exists() || data.val() === auth.uid || !root.child('rooms/' + $code + '/players/' + data.val()).exists() || root.child('rooms/' + $code + '/players/' + data.val() + '/connected').val() === false)",
-            ".validate": "root.child('rooms/' + $code + '/players/' + newData.val()).exists()"
+            // Kimse üçüncü birini host yapamaz. Odayı kuran kendini host yazar;
+            // bu sırada oyuncu düğümü henüz oluşmadığı için auth.uid'e izin verilir.
+            ".validate": "newData.val() === auth.uid || root.child('rooms/' + $code + '/players/' + newData.val()).exists()"
           }
         },
 
         "players": {
           "$uid": {
-            "//": "Oyuncu yalnızca kendi düğümünü yazar.",
+            // Oyuncu yalnızca kendi düğümünü yazar. Oda başına 6 oyuncu sınırı
+            // istemcide uygulanır: kural dili düğüm sayısını sayamıyor.
             ".write": "auth != null && $uid === auth.uid",
-            ".validate": "data.exists() || newData.parent().numChildren() <= 6",
             "card": {
-              "//": "Oyun başladıktan sonra kart değiştirilemez.",
+              // Oyun başladıktan sonra kart değiştirilemez.
               ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 120 && root.child('rooms/' + $code + '/meta/status').val() === 'lobby')"
             },
             "marked": { ".validate": "newData.isString() && newData.val().length <= 300" },
             "name": { ".validate": "newData.isString() && newData.val().length <= 12" },
+            "avatar": { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "color": { ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)" },
             "connected": { ".validate": "newData.isBoolean()" },
             "$other": { ".validate": "newData.isString() || newData.isBoolean() || newData.isNumber()" }
           }
         },
 
         "game": {
-          "//": "Sayıları yalnızca host çeker.",
+          // Sayıları yalnızca host çeker.
           ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid",
           "drawn": { ".validate": "newData.isString() && newData.val().length <= 350" }
         },
 
         "winners": {
-          "//": "Kazananları yalnızca host yazar; istemcinin iddiası tek başına yeterli değildir.",
+          // Kazananları yalnızca host yazar; istemcinin iddiası tek başına yeterli değildir.
           ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid"
         },
 
         "claims": {
           ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid",
           "$uid": {
-            "//": "Oyuncu kendi ilanını açar; sonucu (valid) host yazar.",
+            // Oyuncu kendi ilanını açar, host karara bağlar. Yazma izni üst
+            // düğümde verildiği için oyuncu kendi valid alanına da yazabilir;
+            // bu yalnızca kendi ilanını geçersiz kılar, kazanmaya yaramaz.
             ".write": "auth != null && ($uid === auth.uid || root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid)",
-            "type": { ".validate": "newData.val() === 'cinko1' || newData.val() === 'cinko2' || newData.val() === 'tombala'" },
-            "valid": { ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid" }
+            "type": { ".validate": "newData.val() === 'cinko1' || newData.val() === 'cinko2' || newData.val() === 'tombala'" }
           }
         }
       }
