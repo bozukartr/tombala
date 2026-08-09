@@ -12,7 +12,7 @@
           ".validate": "newData.hasChildren(['hostId', 'status', 'createdAt', 'expiresAt', 'settings'])",
           "hostId": {
             ".write": "auth != null && root.child('rooms/' + $code + '/members/' + auth.uid).exists() && (!root.child('rooms/' + $code + '/members/' + data.val()).exists() || root.child('rooms/' + $code + '/members/' + data.val() + '/connected').val() === false)",
-            ".validate": "newData.isString() && root.child('rooms/' + $code + '/members/' + newData.val()).exists()"
+            ".validate": "newData.isString() && newData.parent().parent().child('members/' + newData.val()).exists()"
           },
           "status": {
             ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished')"
