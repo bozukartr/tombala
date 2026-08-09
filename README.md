@@ -30,6 +30,7 @@ Açılan adreste **Tek cihazda dene**'ye bas. İki bot rakiple tam oyun döngüs
    npx firebase-tools deploy --only database
    ```
    ya da konsolda **Realtime Database → Rules** sekmesine `database.rules.json` içeriğini yapıştır.
+   Bu adım atlanırsa oda kurma dahil her yazma reddedilir; kurallar yüklenmeden çevrimiçi mod çalışmaz.
 
 `config.js` `.gitignore` içinde. Anahtarları repoya gönderme — web API anahtarı gizli sayılmasa da odaları asıl koruyan şey güvenlik kurallarıdır.
 
@@ -99,20 +100,37 @@ Odalar 6 saat sonra bayat sayılır; aynı kod yeniden kullanılabilir hale geli
 ## Bilinen sınırlar
 
 - Çekiliş zamanlaması host istemcisinde yürür. Host'un sekmesi arka plana alınırsa tarayıcı zamanlayıcıyı yavaşlatabilir; `drawnAt` damgası sayesinde diğer oyuncular senkron kalır ama çekiliş gecikebilir.
-- Oda başına 6 oyuncu sınırı güvenlik kuralında `numChildren()` ile kontrol edilir; eşzamanlı iki katılım nadiren sınırı aşabilir.
+- Oda başına 6 oyuncu sınırı yalnızca istemcide uygulanır. Realtime Database kural dili bir düğümün çocuklarını sayamadığı için bu sınır kuralla zorlanamıyor.
 - Host, oda düğümlerine yazma yetkisine sahiptir. Aynı odada tanımadığın kişiyle oynarken bunu hesaba kat.
+- Bir oyuncu kendi `claims/{uid}/valid` alanına yazabilir; yazma izni üst düğümde verildiği için alt kuralla geri alınamıyor. Bunun tek etkisi kendi ilanını geçersiz kılmaktır, kazanmaya yaramaz — kazananları yalnızca host yazar.
 
 ## Test
 
-`card.js` ve `game.js` saf mantıktır ve DOM bilmez, doğrudan Node ile çalıştırılabilir:
+`card.js`, `game.js` ve `net-local.js` saf mantıktır ve DOM bilmez. Mantık testleri
+bağımlılıksız çalışır — kart üretimi, kural doğrulaması ve botlu tam oyun döngüsü dahil:
 
-```js
-import { generateCard, validateCard } from './card.js';
-for (let i = 0; i < 10000; i++) {
-  const hata = validateCard(generateCard());
-  if (hata.length) throw new Error(hata.join(', '));
-}
+```bash
+node tests/logic.test.mjs
 ```
+
+Güvenlik kurallarının testi Firebase emulator'ü ister. Ayrı bir terminalde:
+
+```bash
+npx firebase-tools emulators:start --only database --project tombala
+```
+
+sonra:
+
+```bash
+npm i --no-save --no-package-lock @firebase/rules-unit-testing firebase
+node tests/rules.spec.mjs
+```
+
+Emulator'ün kural motoru yayındakiyle aynıdır. `database.rules.json` burada derlenmiyorsa
+`firebase deploy --only database` de reddeder — kuralları değiştirdikten sonra bu testi çalıştır.
+
+> Kural dosyasında yorumlar `//` ile yazılır. `"//"` **adlı bir anahtar** kural motorunda
+> yol parçası sayılır ve dosyanın tamamının reddedilmesine yol açar.
 
 ## Lisans
 
