@@ -1,5 +1,6 @@
-# Firebase ayarların — repoya gönderme.
-config.js
+# Not: config.js bu repoda bilerek izleniyor — GitHub Pages'te çevrimiçi mod
+# için gerekli. Kendi çatalını kurup ayarlarını gizli tutmak istersen buraya
+# "config.js" satırını ekle ve `git rm --cached config.js` çalıştır.
 
 # Test araçlarının bıraktıkları
 node_modules/

@@ -32,7 +32,9 @@ Açılan adreste **Tek cihazda dene**'ye bas. İki bot rakiple tam oyun döngüs
    ya da konsolda **Realtime Database → Rules** sekmesine `database.rules.json` içeriğini yapıştır.
    Bu adım atlanırsa oda kurma dahil her yazma reddedilir; kurallar yüklenmeden çevrimiçi mod çalışmaz.
 
-`config.js` `.gitignore` içinde. Anahtarları repoya gönderme — web API anahtarı gizli sayılmasa da odaları asıl koruyan şey güvenlik kurallarıdır.
+Bu repoda `config.js` bilerek izleniyor: GitHub Pages'te çevrimiçi modun çalışması için gerekli. Web API anahtarı gizli bir değer değildir, zaten her tarayıcıya gönderilir — odaları asıl koruyan şey güvenlik kurallarının yüklenmiş olması ve Authorized domains listesidir.
+
+Kendi çatalını kurup ayarlarını gizli tutmak istersen `.gitignore`'a `config.js` ekleyip `git rm --cached config.js` çalıştır.
 
 ## GitHub Pages'e yayınlama
 
@@ -45,12 +47,13 @@ git push -u origin main
 
 Repo → **Settings → Pages → Source: Deploy from a branch → main / (root)**.
 
-`config.js` gitignore'da olduğu için Pages'te çevrimiçi mod kapalı gelir. Seçenekler:
+`config.js` repoda izlendiği için Pages'te çevrimiçi mod açık gelir. Anahtarını repoda görünür tutmak istemiyorsan alternatifi, `config.js`'i gitignore'a alıp bir GitHub Actions adımıyla repo secret'larından derleme sırasında üretmektir.
 
-- `config.js`'i tek seferlik `git add -f config.js` ile ekle (küçük özel projeler için yeterli), **veya**
-- bir GitHub Actions adımıyla repo secret'larından derleme sırasında üret.
+İki durumda da yapılması gerekenler:
 
-Her iki durumda da Firebase konsolunda **Authentication → Settings → Authorized domains** listesine `KULLANICI.github.io` alan adını ekle.
+- Firebase konsolunda **Authentication → Settings → Authorized domains** listesine `KULLANICI.github.io` alan adını ekle. Anonim girişi asıl sınırlayan liste budur.
+- `database.rules.json`'u yükle (aşağıdaki kurulum adımı). Kurallar yüklenmeden oda kurma dahil hiçbir yazma çalışmaz.
+- İstersen Google Cloud Console → **APIs & Services → Credentials** ekranından API anahtarına HTTP referrer kısıtı koy; anahtar yalnızca kendi alan adlarından kullanılabilir olur.
 
 ---
 

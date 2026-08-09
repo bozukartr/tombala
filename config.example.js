@@ -1,5 +1,6 @@
 // config.example.js — bu dosyayı config.js olarak kopyala ve kendi değerlerini yaz.
-// config.js .gitignore'da; anahtarlarını repoya gönderme.
+// Bu repoda config.js izleniyor (GitHub Pages için gerekli). Ayarlarını gizli
+// tutmak istersen .gitignore'a "config.js" ekle.
 export const firebaseConfig = {
   apiKey: 'AIza...',
   authDomain: 'PROJE.firebaseapp.com',
