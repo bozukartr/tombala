@@ -41,7 +41,7 @@
             "color": { ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)" },
             "ready": { ".validate": "newData.isBoolean()" },
             "ticket": { ".validate": "newData.isString() && newData.val().length <= 80 && newData.val().matches(/^([0-9]{1,2},){26}[0-9]{1,2}$/)" },
-            "marked": { ".validate": "newData.isString() && newData.val().length <= 270 && newData.val().matches(/^$|^([1-9]|[1-8][0-9]|90)(,([1-9]|[1-8][0-9]|90))*$/)" },
+            "marked": { ".validate": "newData.isString() && newData.val().length <= 270 && newData.val().matches(/^(([1-9]|[1-8][0-9]|90)(,([1-9]|[1-8][0-9]|90))*)?$/)" },
             "connected": { ".validate": "newData.isBoolean()" },
             "joinedAt": { ".validate": "newData.isNumber() && ((data.exists() && newData.val() === data.val()) || (!data.exists() && newData.val() >= now - 120000 && newData.val() <= now + 10000))" },
             "$other": { ".validate": false }
@@ -50,7 +50,7 @@
         "game": {
           ".write": "auth != null && root.child('rooms/' + $code + '/meta/hostId').val() === auth.uid",
           ".validate": "newData.hasChildren(['drawn', 'lastNumber', 'revision', 'updatedAt'])",
-          "drawn": { ".validate": "newData.isString() && newData.val().length <= 270 && newData.val().matches(/^$|^([1-9]|[1-8][0-9]|90)(,([1-9]|[1-8][0-9]|90))*$/)" },
+          "drawn": { ".validate": "newData.isString() && newData.val().length <= 270 && newData.val().matches(/^(([1-9]|[1-8][0-9]|90)(,([1-9]|[1-8][0-9]|90))*)?$/)" },
           "lastNumber": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90" },
           "revision": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90" },
           "updatedAt": { ".validate": "newData.isNumber() && newData.val() >= now - 120000 && newData.val() <= now + 10000" },
