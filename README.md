@@ -32,6 +32,19 @@ Açılan adreste **Tek cihazda dene**'ye bas. İki bot rakiple tam oyun döngüs
    ya da konsolda **Realtime Database → Rules** sekmesine `database.rules.json` içeriğini yapıştır.
    Bu adım atlanırsa oda kurma dahil her yazma reddedilir; kurallar yüklenmeden çevrimiçi mod çalışmaz.
 
+> **Test modundaki süreli kurallara dikkat.** Konsol veritabanı kurarken şuna benzer
+> 30 günlük geçici kurallar önerir:
+>
+> ```json
+> { "rules": { ".read": "now < 1768856400000", ".write": "now < 1768856400000" } }
+> ```
+>
+> Tarih geçtiğinde iki koşul da `false` olur ve veritabanı **her okuma ve yazmayı
+> sessizce reddeder**. Belirtisi, oyunun çevrimiçi tarafının bir günden diğerine
+> tamamen durması olur: "Oda kurulamadı", "Oda bulunamadı". Kural dosyasını yükleyerek
+> bu geçici kuralların üzerine yaz; tarihi ileri almak veritabanını herkese açık
+> bırakır.
+
 Bu repoda `config.js` bilerek izleniyor: GitHub Pages'te çevrimiçi modun çalışması için gerekli. Web API anahtarı gizli bir değer değildir, zaten her tarayıcıya gönderilir — odaları asıl koruyan şey güvenlik kurallarının yüklenmiş olması ve Authorized domains listesidir.
 
 Kendi çatalını kurup ayarlarını gizli tutmak istersen `.gitignore`'a `config.js` ekleyip `git rm --cached config.js` çalıştır.
