@@ -4,7 +4,7 @@ import {
   cardNumbers, shuffle, ROWS, COLS,
 } from './card.js';
 import {
-  evaluate, resolveClaims, CLAIM_LABEL, FALSE_CLAIM_PENALTY_MS,
+  evaluate, missedNumbers, resolveClaims, CLAIM_LABEL, FALSE_CLAIM_PENALTY_MS,
 } from './game.js';
 import { sfx, haptic, confetti, shake, unlockAudio, settings as fxSettings, setSetting } from './fx.js';
 
@@ -29,7 +29,26 @@ const S = {
   seenWinners: '',
   builder: new Set(),
   lastRows: [false, false, false],
+  claimedTypes: new Set(), // kazanılmış ilanlar — aynı ilan iki kez gönderilmesin
+  handledClaim: '',        // sonucuna tepki verdiğim ilan (tekrar tekrar cezalanmayı önler)
+  lastAutoMark: '',        // aynı otomatik işaretleme için ses/titreşim tekrarlanmasın
+  resolving: false,        // host ilan çözümlemesi sürüyor
+  drawing: false,          // çekiliş yazımı sürüyor
 };
+
+/** Tur başına sıfırlanan istemci durumu. Yeni tura giren herkes çağırır. */
+function resetRoundState() {
+  clearTimeout(S.drawTimer);
+  S.drawTimer = null;
+  S.seenDraw = null;
+  S.seenWinners = '';
+  S.lastRows = [false, false, false];
+  S.pauseUntil = 0;
+  S.penaltyUntil = 0;
+  S.claimedTypes.clear();
+  S.handledClaim = '';
+  S.lastAutoMark = '';
+}
 
 const profile = {
   name: localStorage.getItem('tmb.name') || '',
@@ -221,7 +240,7 @@ $('#b-share').onclick = async () => {
 
 $('#b-leave').onclick = async () => {
   if (S.unsub) S.unsub();
-  clearTimeout(S.drawTimer);
+  resetRoundState();
   try { await NET.leaveRoom(S.code); } catch { /* zaten kopmuş */ }
   localStorage.removeItem('tmb.room');
   S.code = null; S.room = null; S.unsub = null;
@@ -285,8 +304,8 @@ function renderLobby() {
     const li = document.createElement('li');
     li.className = 'player' + (p.connected ? '' : ' is-off');
     li.innerHTML = `
-      <span class="player__avatar" style="background:${p.color}">${p.avatar}</span>
-      <span class="player__name">${escapeHtml(p.name)}${id === room.meta.hostId ? ' 👑' : ''}</span>
+      <span class="player__avatar" style="background:${safeColor(p.color)}">${safeAvatar(p.avatar)}</span>
+      <span class="player__name">${safeName(p.name)}${id === room.meta.hostId ? ' 👑' : ''}</span>
       <span class="player__tag ${p.ready ? 'is-ready' : ''}">${
         !p.connected ? 'bağlantı koptu' : p.ready ? 'hazır' : p.card ? 'kart seçti' : 'kart bekleniyor'
       }</span>`;
@@ -304,8 +323,13 @@ function renderLobby() {
   renderSettings();
 }
 
-const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Ad, renk ve simge başka bir istemciden gelir; hiçbiri doğrudan HTML'e gömülmez.
+const safeColor = (c) => (/^#[0-9a-fA-F]{3,8}$/.test(String(c ?? '')) ? String(c) : COLORS[0]);
+const safeAvatar = (a) => escapeHtml([...String(a ?? '')].slice(0, 2).join('')) || '🙂';
+const safeName = (n) => escapeHtml(String(n ?? '').slice(0, 12)) || 'Oyuncu';
 
 /* ================= Kart kurma çekmecesi ================= */
 $('#b-build-card').onclick = () => {
@@ -449,10 +473,19 @@ function renderGame() {
       $('#pouch').classList.add('is-squeeze');
       sfx.draw();
       haptic.draw();
-      if (roomSettings().autoMark && cardNumbers(me().card).includes(last)) {
-        markNumber(last);
-      }
     }
+  }
+
+  // Otomatik işaretleme yalnızca son sayıya bakarsa, bağlantı koptuğunda ya da
+  // ayar oyun ortasında açıldığında kaçan sayılar bir daha işaretlenmez.
+  if (roomSettings().autoMark) {
+    const missed = missedNumbers(me().card, me().marked, drawn);
+    const key = missed.join(',');
+    if (missed.length) {
+      NET.updateMe(S.code, { marked: [...me().marked, ...missed] });
+      if (key !== S.lastAutoMark) { sfx.mark(); haptic.mark(); }
+    }
+    S.lastAutoMark = key;
   }
 
   // İşaretleme ağ katmanını tetiklediği için durum bu noktada yeniden okunur.
@@ -482,8 +515,8 @@ function renderGame() {
       const chip = document.createElement('div');
       chip.className = 'pchip' + (p.connected ? '' : ' is-off');
       chip.innerHTML = `
-        <span class="pchip__dot" style="background:${p.color}">${p.avatar}</span>
-        <span>${escapeHtml(id === S.uid ? 'Sen' : p.name)}</span>
+        <span class="pchip__dot" style="background:${safeColor(p.color)}">${safeAvatar(p.avatar)}</span>
+        <span>${id === S.uid ? 'Sen' : safeName(p.name)}</span>
         <span class="pchip__bar"><i style="width:${(pst.markedCount / 15) * 100}%"></i></span>`;
       strip.append(chip);
     });
@@ -513,7 +546,10 @@ function renderGame() {
   };
   $$('[data-claim]').forEach((b) => {
     const t = b.dataset.claim;
-    const on = canClaim[t] && !penalty && !claimed;
+    // İlanım kabul edilip claims'ten silindiği an ile winners'ın gelmesi arasında
+    // buton bir anlığına yeniden açılıyordu; ikinci ilan "zaten yaptın" diye
+    // reddedilip kazanana ceza yazıyordu. Kabul edilen ilan tur boyunca kilitli.
+    const on = canClaim[t] && !penalty && !claimed && !S.claimedTypes.has(t);
     b.disabled = !on;
     b.classList.toggle('is-live', on);
   });
@@ -543,8 +579,11 @@ function sweepRow(r) {
 $$('[data-claim]').forEach((b) => {
   b.onclick = () => {
     const type = b.dataset.claim;
+    if (S.claimedTypes.has(type) || S.penaltyUntil > Date.now()) return;
+    S.claimedTypes.add(type);
     NET.sendClaim(S.code, type, S.room.game.drawn.length);
     b.disabled = true;
+    b.classList.remove('is-live');
     toast(CLAIM_LABEL[type] + ' ilan edildi');
   };
 });
@@ -563,33 +602,52 @@ $('#b-sound').onclick = () => {
 async function doDraw() {
   const room = S.room;
   if (!room || !isHost() || room.meta.status !== 'playing') return;
+  if (S.drawing) return; // aynı anda iki çekiliş yazılmasın
   const drawn = room.game.drawn;
   const remaining = ALL_NUMBERS.filter((n) => !drawn.includes(n));
   if (!remaining.length) return finishGame();
   const n = shuffle(remaining)[0];
-  await NET.pushDraw(S.code, [...drawn, n], n);
+  S.drawing = true;
+  try {
+    await NET.pushDraw(S.code, [...drawn, n], n);
+  } finally {
+    S.drawing = false;
+  }
 }
 
 async function hostLoop() {
   const room = S.room;
   clearTimeout(S.drawTimer);
   if (!room || !isHost() || room.meta.status !== 'playing') return;
+  // Ağ yazımı yeni bir oda güncellemesi doğurduğu için hostLoop kendi içinden
+  // tekrar çağrılabiliyor. Çözümleme sürerken iç içe çağrıyı at; zamanlayıcıyı
+  // dıştaki çağrı kuracak.
+  if (S.resolving) return;
 
   // 1) Bekleyen ilanları çöz
-  const pending = Object.entries(room.claims || {}).filter(([, c]) => c.valid === undefined);
+  const pending = Object.entries(room.claims || {}).filter(([, c]) => c && c.valid === undefined);
   if (pending.length) {
-    const { results, winners, finished } = resolveClaims({
-      claims: room.claims,
-      players: room.players,
-      drawn: room.game.drawn,
-      winners: room.winners,
-    });
-    for (const [id, r] of Object.entries(results)) {
-      await NET.resolveClaimResult(S.code, id, r.valid, r.reason);
-    }
-    if (JSON.stringify(winners) !== JSON.stringify(room.winners)) {
-      await NET.setWinners(S.code, winners);
-      S.pauseUntil = Date.now() + 2600; // kutlama için kısa duraklama
+    S.resolving = true;
+    let finished = false;
+    try {
+      const res = resolveClaims({
+        claims: room.claims,
+        players: room.players,
+        drawn: room.game.drawn,
+        winners: room.winners,
+      });
+      finished = res.finished;
+      // Kazananlar önce yazılır: ilan sonucu istemciye kazananlardan önce
+      // ulaşırsa ilan butonu bir kare için yeniden açılıyordu.
+      if (JSON.stringify(res.winners) !== JSON.stringify(room.winners)) {
+        await NET.setWinners(S.code, res.winners);
+        S.pauseUntil = Date.now() + 2600; // kutlama için kısa duraklama
+      }
+      for (const [id, r] of Object.entries(res.results)) {
+        await NET.resolveClaimResult(S.code, id, r.valid, r.reason);
+      }
+    } finally {
+      S.resolving = false;
     }
     if (finished) return finishGame();
   }
@@ -636,10 +694,8 @@ function renderResult() {
 }
 
 $('#b-again').onclick = async () => {
+  // Tur durumu artık lobiye dönüşte herkeste sıfırlanıyor (bkz. onRoom).
   await NET.resetRoom(S.code);
-  S.seenDraw = null;
-  S.seenWinners = '';
-  S.lastRows = [false, false, false];
   show('s-lobby');
 };
 
@@ -658,18 +714,27 @@ async function onRoom(room) {
   const prev = S.room;
   S.room = room;
 
+  // Yeni tur: tur durumu yalnızca "Tekrar oyna"ya basan hostta sıfırlanıyordu,
+  // diğer oyuncularda önceki turun sayısı/satırları/cezası taşınıyordu.
+  if (prev && prev.meta.status !== 'lobby' && room.meta.status === 'lobby') resetRoundState();
+
   if (!S.isLocal) await NET.maybeClaimHost(S.code, room);
 
-  // Kendi ilanımın sonucu
+  // Kendi ilanımın sonucu — her oda güncellemesinde değil, ilan başına bir kez.
   const myClaim = room.claims?.[S.uid];
-  if (myClaim && myClaim.valid === false) {
-    S.penaltyUntil = Date.now() + FALSE_CLAIM_PENALTY_MS;
-    toast(myClaim.reason || 'Yanlış ilan', true);
-    sfx.error();
-    haptic.error();
-    shake(document.body, 'sm');
-    NET.dropClaim?.(S.code, S.uid);
-  } else if (myClaim && myClaim.valid === true) {
+  if (myClaim && myClaim.valid !== undefined) {
+    const key = `${myClaim.type}:${myClaim.at}`;
+    if (S.handledClaim !== key) {
+      S.handledClaim = key;
+      if (myClaim.valid === false) {
+        S.claimedTypes.delete(myClaim.type); // koşullar oluşursa tekrar denenebilir
+        S.penaltyUntil = Date.now() + FALSE_CLAIM_PENALTY_MS;
+        toast(myClaim.reason || 'Yanlış ilan', true);
+        sfx.error();
+        haptic.error();
+        shake(document.body, 'sm');
+      }
+    }
     NET.dropClaim?.(S.code, S.uid);
   }
 

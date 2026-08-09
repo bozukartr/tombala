@@ -13,6 +13,7 @@ const MIN_PLAYERS = 2;
 const ROOM_TTL_MS = 6 * 60 * 60 * 1000;
 
 let app, auth, db, uid = null;
+let presenceRef = null; // odadan çıkarken onDisconnect kaydı iptal edilir
 
 export async function initNet(config) {
   app = initializeApp(config);
@@ -95,7 +96,8 @@ export async function joinRoom(code, profile) {
     ? { connected: true, name: profile.name, avatar: profile.avatar, color: profile.color }
     : { ...profile, ready: false, card: null, marked: '', connected: true, joinedAt: Date.now() });
 
-  onDisconnect(ref(db, `rooms/${code}/players/${uid}/connected`)).set(false);
+  presenceRef = ref(db, `rooms/${code}/players/${uid}/connected`);
+  await onDisconnect(presenceRef).set(false);
   return code;
 }
 
@@ -139,7 +141,18 @@ export async function maybeClaimHost(code, room) {
     cur === room.meta.hostId ? uid : undefined);
 }
 
-export const leaveRoom = (code) => remove(ref(db, `rooms/${code}/players/${uid}`));
+/**
+ * Odadan çıkış. onDisconnect kaydı önce iptal edilir: yoksa bağlantı daha sonra
+ * koptuğunda sunucu silinmiş oyuncuyu `{connected:false}` olarak geri yazıyor,
+ * lobide adsız bir hayalet oyuncu beliriyor ve 6 kişilik kontenjanı işgal ediyordu.
+ */
+export async function leaveRoom(code) {
+  if (presenceRef) {
+    try { await onDisconnect(presenceRef).cancel(); } catch { /* bağlantı zaten kopmuş */ }
+    presenceRef = null;
+  }
+  await remove(ref(db, `rooms/${code}/players/${uid}`));
+}
 
 /**
  * Yeni tur: yalnızca oda düzeyindeki düğümler sıfırlanır.
