@@ -266,6 +266,11 @@ console.log('\nAna menü');
 kontrol('menü açılıyor', await sayfa.locator('#ekran-menu.ekran--acik').isVisible());
 kontrol('oyun ekranı gizli', !(await sayfa.locator('#ekran-oyun').isVisible()));
 kontrol('nasıl oynanır üç madde', (await sayfa.locator('.liste li').count()) === 3);
+kontrol('menüde sürüm damgası görünüyor',
+  /^v\d+$/.test((await sayfa.locator('#surum').textContent()).trim()),
+  await sayfa.locator('#surum').textContent());
+kontrol('çevrimiçi giriş düğmeleri var',
+  (await sayfa.locator('#btn-oda-kur').count()) === 1 && (await sayfa.locator('#btn-odaya-katil').count()) === 1);
 
 await sayfa.locator('#secim-hiz button[data-deger="2000"]').click();
 await sayfa.reload();
