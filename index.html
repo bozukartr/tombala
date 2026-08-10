@@ -26,7 +26,7 @@
     </h1>
     <p class="slogan">Torbadan sayılar çıkar, kartını doldur.</p>
 
-    <button class="dugme dugme--ana" id="btn-basla">Oyuna başla</button>
+    <button class="dugme dugme--ana" id="btn-basla">Oyna</button>
 
     <div class="panel">
       <div class="panel__bas"><h2 class="baslik">Ayarlar</h2></div>
@@ -83,6 +83,55 @@
   </div>
 </section>
 
+<!-- ======================= LOBİ ======================= -->
+<section class="ekran" id="ekran-lobi">
+  <div class="kutu">
+    <div class="bar">
+      <button class="ikon" id="btn-lobi-geri" aria-label="Menüye dön">‹</button>
+      <h2 class="baslik baslik--orta">Lobi</h2>
+      <span class="ikon ikon--bos" aria-hidden="true"></span>
+    </div>
+
+    <div class="panel">
+      <div class="panel__bas"><h3 class="baslik">Profilin</h3></div>
+      <label class="alan">
+        <span class="etiket">Adın</span>
+        <input id="in-ad" type="text" maxlength="12" placeholder="Adını yaz" autocomplete="nickname" />
+      </label>
+      <div class="alan">
+        <span class="etiket">Simgen</span>
+        <div class="secici" id="avatar-secici" role="radiogroup" aria-label="Simge seç"></div>
+      </div>
+      <div class="alan">
+        <span class="etiket">Rengin</span>
+        <div class="secici secici--renk" id="renk-secici" role="radiogroup" aria-label="Renk seç"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__bas">
+        <h3 class="baslik">Kartın</h3>
+        <span class="sayac-yazi" id="kart-durum">Rastgele</span>
+      </div>
+      <div id="lobi-kart" class="kart kart--onizleme"></div>
+      <div class="sur">
+        <button class="dugme dugme--ince" id="btn-rastgele-kart">Rastgele kart</button>
+        <button class="dugme dugme--ince" id="btn-kart-kur">Kendim kurayım</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__bas">
+        <h3 class="baslik">Oyuncular</h3>
+        <span class="sayac-yazi" id="lobi-sayi">1/1</span>
+      </div>
+      <ul class="oyuncu-listesi" id="lobi-oyuncular"></ul>
+    </div>
+
+    <button class="dugme dugme--ana" id="btn-oyunu-baslat">Oyunu başlat</button>
+  </div>
+</section>
+
 <!-- ======================= OYUN ======================= -->
 <section class="ekran ekran--oyun" id="ekran-oyun">
 
@@ -136,7 +185,24 @@
     <p class="perde__yazi" id="sonuc-yazi"></p>
     <div class="sonuc-liste" id="sonuc-liste"></div>
     <button class="dugme dugme--ana" id="btn-tekrar">Tekrar oyna</button>
-    <button class="dugme dugme--sade" id="btn-anamenu">Ana menü</button>
+    <button class="dugme dugme--sade" id="btn-anamenu">Lobiye dön</button>
+  </div>
+</div>
+
+<!-- ======================= KART KURMA ======================= -->
+<div class="cekmece" id="cekmece" hidden>
+  <div class="cekmece__panel">
+    <div class="cekmece__bas">
+      <h3 class="baslik">Kartını kur</h3>
+      <span class="sayac-yazi" id="cekmece-sayac">Kalan 15</span>
+      <button class="ikon" id="btn-cekmece-kapat" aria-label="Kapat">✕</button>
+    </div>
+    <div class="sayi-izgara" id="sayi-izgara"></div>
+    <p class="uyari" id="cekmece-uyari"></p>
+    <div class="sur">
+      <button class="dugme dugme--ince" id="btn-cekmece-temizle">Temizle</button>
+      <button class="dugme dugme--ince dugme--vurgu" id="btn-cekmece-kaydet" disabled>Kartı kullan</button>
+    </div>
   </div>
 </div>
 

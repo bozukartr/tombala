@@ -126,6 +126,61 @@
     return h;
   }
 
+  /** Bir sayı hangi sütuna düşer? */
+  function sutunNo(n) {
+    if (n <= 9) return 0;
+    if (n >= 80) return 8;
+    return Math.floor(n / 10);
+  }
+
+  /** Elle seçilmiş 15 sayıdan geçerli bir kart düzeni kurar. */
+  function sayilardanKart(sayilar) {
+    const nums = [...new Set(sayilar)].sort((a, b) => a - b);
+    if (nums.length !== KART_SAYI) throw new Error('15 sayı gerekli');
+
+    const sutunlar = Array.from({ length: SUTUN }, () => []);
+    for (const n of nums) {
+      if (!Number.isInteger(n) || n < 1 || n > EN_BUYUK) throw new Error('Geçersiz sayı: ' + n);
+      sutunlar[sutunNo(n)].push(n);
+    }
+    const adet = sutunlar.map((a) => a.length);
+    if (adet.some((c) => c < 1)) throw new Error('Boş sütun bırakılamaz');
+    if (adet.some((c) => c > 3)) throw new Error("Bir sütunda en çok 3 sayı olur");
+
+    let dolu = null;
+    for (let i = 0; i < 20 && !dolu; i++) dolu = satirlaraDagit(adet);
+    if (!dolu) throw new Error('Kart düzeni kurulamadı');
+
+    const kart = Array(SATIR * SUTUN).fill(null);
+    for (let c = 0; c < SUTUN; c++) {
+      let k = 0;
+      for (let r = 0; r < SATIR; r++) {
+        if (dolu[r * SUTUN + c]) kart[r * SUTUN + c] = sutunlar[c][k++];
+      }
+    }
+    return kart;
+  }
+
+  /** Kart kurarken anlık geri bildirim. */
+  function secimIncele(sayilar) {
+    const nums = [...new Set(sayilar)];
+    const adet = Array(SUTUN).fill(0);
+    for (const n of nums) adet[sutunNo(n)]++;
+    const sorunlar = [];
+    if (nums.length > KART_SAYI) sorunlar.push('15 sayıdan fazla seçildi');
+    adet.forEach((c, i) => {
+      if (c > 3) sorunlar.push(`${i + 1}. sütunda 3'ten fazla sayı var`);
+    });
+    const bosSutun = adet.filter((c) => c === 0).length;
+    if (nums.length === KART_SAYI && bosSutun > 0) sorunlar.push('Boş sütun bırakılamaz');
+    return {
+      adet,
+      kalan: KART_SAYI - nums.length,
+      gecerli: nums.length === KART_SAYI && sorunlar.length === 0,
+      sorunlar,
+    };
+  }
+
   const satirSayilari = (kart, r) =>
     kart.slice(r * SUTUN, r * SUTUN + SUTUN).filter((v) => v !== null);
 
@@ -240,7 +295,8 @@
   const Cekirdek = {
     SATIR, SUTUN, SATIR_BASI, KART_SAYI, EN_BUYUK,
     ILAN_TURLERI, ILAN_ADI, YANLIS_ILAN_CEZASI,
-    karistir, sutunAraligi, kartUret, kartDogrula, torbaKur,
+    karistir, sutunAraligi, sutunNo, kartUret, kartDogrula, torbaKur,
+    sayilardanKart, secimIncele,
     satirSayilari, kartSayilari, degerlendir, kacanlar,
     hakEdiyor, ilanDogrula, ilanlariCoz,
   };
@@ -257,6 +313,9 @@
 
   const ASAMALAR = ILAN_TURLERI;
   const ASAMA_ADI = ILAN_ADI;
+
+  const AVATARLAR = ['🎯', '🦁', '🐼', '🦄', '🐳', '🦖', '🍀', '⭐'];
+  const RENKLER = ['#ffb43d', '#f0517a', '#34d39a', '#6bc5f5', '#c084fc', '#ff8a5b'];
 
   const BOT_ADLARI = ['Nihal', 'Ferit', 'Sevim', 'Cemre'];
   const BOT_YUZLERI = ['🦊', '🐢', '🦉', '🐝'];
@@ -343,6 +402,16 @@
 
   const BEN = 'ben';
 
+  const profil = {
+    ad: localStorage.getItem('tombala.ad') || '',
+    avatar: localStorage.getItem('tombala.avatar') || AVATARLAR[0],
+    renk: localStorage.getItem('tombala.renk') || RENKLER[0],
+  };
+  const adim = () => profil.ad.trim() || 'Sen';
+
+  // Lobide seçilen kart; oyun bu kartla başlar, turlar arasında korunur.
+  const L = { kart: null, kurulmus: false, secim: new Set() };
+
   const O = {
     oyuncular: [],   // { id, ad, avatar, renk, bot, tepki, kart, isaretli:Set }
     torba: [],
@@ -364,6 +433,7 @@
   const ben = () => O.oyuncular.find((o) => o.id === BEN);
   const oyuncu = (id) => O.oyuncular.find((o) => o.id === id);
   const adiyla = (id) => (id === BEN ? 'Sen' : (oyuncu(id)?.ad || '?'));
+  const botTanim = (i) => ({ ad: BOT_ADLARI[i], avatar: BOT_YUZLERI[i], renk: BOT_RENKLERI[i] });
 
   /* ===================== Yardımcılar ===================== */
 
@@ -458,9 +528,11 @@
 
   $('#btn-ses').onclick = () => { sesiAyarla(!sesAcik, true); if (sesAcik) sfx.dokun(); };
 
-  $('#btn-basla').onclick = oyunuBaslat;
-  $('#btn-menu').onclick = () => { oyunuBirak(); ekranGoster('ekran-menu'); sfx.dokun(); };
-  $('#btn-anamenu').onclick = () => { perdeKapat(); oyunuBirak(); ekranGoster('ekran-menu'); };
+  $('#btn-basla').onclick = lobiyeGec;
+  $('#btn-lobi-geri').onclick = () => { ekranGoster('ekran-menu'); sfx.dokun(); };
+  $('#btn-oyunu-baslat').onclick = oyunuBaslat;
+  $('#btn-menu').onclick = () => { oyunuBirak(); lobiyeGec(); sfx.dokun(); };
+  $('#btn-anamenu').onclick = () => { perdeKapat(); oyunuBirak(); lobiyeGec(); };
   $('#btn-tekrar').onclick = () => { perdeKapat(); oyunuBaslat(); };
   $('#btn-cek').onclick = () => { if (!O.bitti) sayiCek(); };
   document.querySelectorAll('[data-ilan]').forEach((b) => {
@@ -473,12 +545,172 @@
   });
   $('#btn-durdur').onclick = duraklatDegistir;
 
+  /* ===================== Lobi ===================== */
+
+  function lobiyeGec() {
+    if (!L.kart) L.kart = kartUret();
+    $('#in-ad').value = profil.ad;
+    seciciCiz();
+    lobiTazele();
+    ekranGoster('ekran-lobi');
+  }
+
+  function seciciCiz() {
+    const av = $('#avatar-secici');
+    const rn = $('#renk-secici');
+    av.innerHTML = '';
+    rn.innerHTML = '';
+    for (const a of AVATARLAR) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = a;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-label', 'Simge ' + a);
+      b.setAttribute('aria-checked', String(a === profil.avatar));
+      b.className = a === profil.avatar ? 'secili' : '';
+      b.onclick = () => {
+        profil.avatar = a;
+        localStorage.setItem('tombala.avatar', a);
+        seciciCiz();
+        lobiTazele();
+        sfx.dokun();
+      };
+      av.append(b);
+    }
+    for (const r of RENKLER) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.style.background = r;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-label', 'Renk');
+      b.setAttribute('aria-checked', String(r === profil.renk));
+      b.className = r === profil.renk ? 'secili' : '';
+      b.onclick = () => {
+        profil.renk = r;
+        localStorage.setItem('tombala.renk', r);
+        seciciCiz();
+        lobiTazele();
+        sfx.dokun();
+      };
+      rn.append(b);
+    }
+  }
+
+  $('#in-ad').addEventListener('input', (e) => {
+    profil.ad = e.target.value.slice(0, 12);
+    localStorage.setItem('tombala.ad', profil.ad);
+    lobiTazele();
+  });
+
+  $('#btn-rastgele-kart').onclick = () => {
+    L.kart = kartUret();
+    L.kurulmus = false;
+    lobiTazele();
+    sfx.dokun();
+    titre(10);
+  };
+
+  function lobiTazele() {
+    onizlemeCiz($('#lobi-kart'), L.kart);
+    $('#kart-durum').textContent = L.kurulmus ? 'Kendi kurduğun' : 'Rastgele';
+
+    const liste = $('#lobi-oyuncular');
+    liste.innerHTML = '';
+    const satir = (ad, avatar, renk, etiket, hazir) => {
+      const li = document.createElement('li');
+      li.className = 'oyuncu-satir';
+      li.innerHTML = `
+        <span class="oyuncu-satir__yuz" style="background:${kacis(renk)}">${kacis(avatar)}</span>
+        <span class="oyuncu-satir__ad">${kacis(ad)}</span>
+        <span class="oyuncu-satir__etiket ${hazir ? 'hazir' : ''}">${kacis(etiket)}</span>`;
+      liste.append(li);
+    };
+    satir(adim(), profil.avatar, profil.renk, 'kartın hazır', true);
+    for (let i = 0; i < ayarlar.rakip; i++) {
+      const b = botTanim(i);
+      satir(b.ad, b.avatar, b.renk, 'hazır', true);
+    }
+    $('#lobi-sayi').textContent = `${1 + ayarlar.rakip}/${1 + ayarlar.rakip}`;
+  }
+
+  /** Kartı dokunulamaz biçimde çizer (lobi önizlemesi). */
+  function onizlemeCiz(kutu, kart) {
+    kutu.innerHTML = '';
+    if (!kart) return;
+    for (let r = 0; r < SATIR; r++) {
+      for (let c = 0; c < SUTUN; c++) {
+        const n = kart[r * SUTUN + c];
+        const h = document.createElement('div');
+        h.className = 'hucre' + (n === null ? ' hucre--bos' : '');
+        if (n !== null) h.textContent = n;
+        kutu.append(h);
+      }
+    }
+  }
+
+  /* ===================== Kart kurma çekmecesi ===================== */
+
+  $('#btn-kart-kur').onclick = () => {
+    L.secim = new Set(kartSayilari(L.kart));
+    cekmeceCiz();
+    $('#cekmece').hidden = false;
+    sfx.dokun();
+  };
+  $('#btn-cekmece-kapat').onclick = () => { $('#cekmece').hidden = true; sfx.dokun(); };
+  $('#btn-cekmece-temizle').onclick = () => { L.secim.clear(); cekmeceCiz(); sfx.dokun(); };
+  $('#btn-cekmece-kaydet').onclick = () => {
+    try {
+      L.kart = Cekirdek.sayilardanKart([...L.secim]);
+      L.kurulmus = true;
+      $('#cekmece').hidden = true;
+      lobiTazele();
+      bildir('Kartın kaydedildi');
+      sfx.cinko();
+    } catch (e) {
+      bildir(e.message, true);
+      sfx.hata();
+    }
+  };
+
+  function cekmeceCiz() {
+    const izgara = $('#sayi-izgara');
+    const bilgi = Cekirdek.secimIncele([...L.secim]);
+    izgara.innerHTML = '';
+    for (let c = 0; c < SUTUN; c++) {
+      const sutun = document.createElement('div');
+      sutun.className = 'sayi-sutun' + (bilgi.adet[c] > 3 ? ' dolu' : '');
+      const [alt, ust] = sutunAraligi(c);
+      for (let n = alt; n <= ust; n++) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sayi' + (L.secim.has(n) ? ' secili' : '');
+        b.textContent = n;
+        b.onclick = () => {
+          if (L.secim.has(n)) L.secim.delete(n);
+          else if (L.secim.size >= KART_SAYI) {
+            bildir('15 sayı doldu', true);
+            return sfx.hata();
+          } else L.secim.add(n);
+          titre(8);
+          sfx.isaret();
+          cekmeceCiz();
+        };
+        sutun.append(b);
+      }
+      izgara.append(sutun);
+    }
+    $('#cekmece-sayac').textContent = bilgi.kalan > 0 ? `Kalan ${bilgi.kalan}` : 'Tamam';
+    $('#cekmece-uyari').textContent = bilgi.sorunlar[0] || '';
+    $('#btn-cekmece-kaydet').disabled = !bilgi.gecerli;
+  }
+
   /* ===================== Oyun kurulumu ===================== */
 
   function oyuncuKur() {
+    if (!L.kart) L.kart = kartUret();
     const liste = [{
-      id: BEN, ad: 'Sen', avatar: '🎯', renk: '#ffb43d', bot: false,
-      kart: kartUret(), isaretli: new Set(),
+      id: BEN, ad: adim(), avatar: profil.avatar, renk: profil.renk, bot: false,
+      kart: L.kart, isaretli: new Set(),
     }];
     const kac = Math.max(0, Math.min(ayarlar.rakip, BOT_ADLARI.length));
     for (let i = 0; i < kac; i++) {

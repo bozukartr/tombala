@@ -88,6 +88,40 @@ kontrol('torba 90 sayının hepsini içeriyor', await sayfa.evaluate(() => {
   return t.length === 90 && new Set(t).size === 90 && Math.min(...t) === 1 && Math.max(...t) === 90;
 }));
 
+kontrol('sayilardanKart seçilen 15 sayıdan geçerli kart kuruyor', await sayfa.evaluate(() => {
+  for (let i = 0; i < 200; i++) {
+    const kaynak = Tombala.kartSayilari(Tombala.kartUret());
+    const kart = Tombala.sayilardanKart(Tombala.karistir(kaynak));
+    if (Tombala.kartDogrula(kart).length) return false;
+    const cikan = Tombala.kartSayilari(kart).slice().sort((a, b) => a - b).join();
+    if (cikan !== kaynak.slice().sort((a, b) => a - b).join()) return false;
+  }
+  return true;
+}));
+
+kontrol('sayilardanKart eksik seçimi reddediyor', await sayfa.evaluate(() => {
+  try { Tombala.sayilardanKart([1, 2, 3]); return false; } catch (e) { return e.message.includes('15 sayı'); }
+}));
+
+kontrol('sayilardanKart bir sütunda 4 sayıyı reddediyor', await sayfa.evaluate(() => {
+  // 10,11,12,13 aynı sütunda; kalanlar başka sütunlardan
+  const secim = [10, 11, 12, 13, 1, 20, 30, 40, 50, 60, 70, 80, 2, 21, 31];
+  try { Tombala.sayilardanKart(secim); return false; } catch (e) { return e.message.includes('3'); }
+}));
+
+kontrol('sayilardanKart boş sütunu reddediyor', await sayfa.evaluate(() => {
+  // 9. sütun (80-90) hiç seçilmemiş
+  const secim = [1, 2, 3, 10, 11, 12, 20, 21, 30, 31, 40, 50, 60, 70, 71];
+  try { Tombala.sayilardanKart(secim); return false; } catch (e) { return e.message.includes('Boş sütun'); }
+}));
+
+kontrol('secimIncele kalan sayıyı ve sorunu bildiriyor', await sayfa.evaluate(() => {
+  const bos = Tombala.secimIncele([]);
+  const dolu = Tombala.secimIncele([10, 11, 12, 13]);
+  return bos.kalan === 15 && !bos.gecerli
+      && dolu.kalan === 11 && dolu.sorunlar.some((x) => x.includes('3'));
+}));
+
 /* ================= Çekirdek: hakem ================= */
 console.log('\nHakem');
 
@@ -238,19 +272,110 @@ await sayfa.reload();
 kontrol('ayar yeniden yüklemede korunuyor',
   await sayfa.locator('#secim-hiz button[data-deger="2000"]').evaluate((b) => b.classList.contains('secili')));
 
+/* ================= Lobi ================= */
+console.log('\nLobi');
+
+await sayfa.locator('#btn-basla').click();
+kontrol('Oyna düğmesi lobiye götürüyor', await sayfa.locator('#ekran-lobi.ekran--acik').isVisible());
+kontrol('lobide kart önizlemesi çiziliyor',
+  (await sayfa.locator('#lobi-kart > *').count()) === 27);
+kontrol('önizlemede 15 sayı var',
+  (await sayfa.locator('#lobi-kart .hucre:not(.hucre--bos)').count()) === 15);
+kontrol('avatar seçici dolu', (await sayfa.locator('#avatar-secici button').count()) > 0);
+kontrol('renk seçici dolu', (await sayfa.locator('#renk-secici button').count()) > 0);
+
+const onizlemeOku = () => sayfa.$$eval('#lobi-kart > *', (els) =>
+  els.filter((e) => e.textContent).map((e) => Number(e.textContent)).sort((a, b) => a - b));
+
+const kartOnce = await onizlemeOku();
+await sayfa.locator('#btn-rastgele-kart').click();
+kontrol('rastgele kart yeni kart veriyor',
+  (await onizlemeOku()).join() !== kartOnce.join());
+kontrol('rastgele kart geçerli',
+  (await sayfa.evaluate(() => Tombala.kartDogrula(
+    [...document.querySelectorAll('#lobi-kart > *')].map((e) => (e.textContent ? Number(e.textContent) : null)),
+  ))).length === 0);
+
+// profil
+await sayfa.locator('#in-ad').fill('Burak');
+await sayfa.locator('#avatar-secici button').nth(2).click();
+await sayfa.locator('#renk-secici button').nth(3).click();
+kontrol('ad oyuncu listesinde görünüyor',
+  (await sayfa.locator('#lobi-oyuncular .oyuncu-satir__ad').first().textContent()) === 'Burak');
+kontrol('seçilen avatar işaretli',
+  await sayfa.locator('#avatar-secici button').nth(2).evaluate((b) => b.classList.contains('secili')));
+
+await sayfa.reload();
+await sayfa.locator('#btn-basla').click();
+kontrol('profil yeniden yüklemede korunuyor',
+  (await sayfa.locator('#in-ad').inputValue()) === 'Burak');
+
+/* ---- kart kurma çekmecesi ---- */
+await sayfa.locator('#btn-kart-kur').click();
+kontrol('çekmece açılıyor', await sayfa.locator('#cekmece').isVisible());
+kontrol('çekmecede 90 sayı var', (await sayfa.locator('.sayi').count()) === 90);
+kontrol('mevcut kart seçili geliyor', (await sayfa.locator('.sayi.secili').count()) === 15);
+
+await sayfa.locator('#btn-cekmece-temizle').click();
+kontrol('temizle seçimi sıfırlıyor', (await sayfa.locator('.sayi.secili').count()) === 0);
+kontrol('boş seçimde kaydet kapalı', await sayfa.locator('#btn-cekmece-kaydet').isDisabled());
+
+// her sütunda en az bir sayı, toplam 15
+const secim = [1, 2, 3, 10, 11, 12, 20, 21, 22, 30, 40, 50, 60, 70, 80];
+for (const n of secim) await sayfa.locator(`.sayi:text-is("${n}")`).first().click();
+kontrol('15 sayı seçilince sayaç tamam diyor',
+  (await sayfa.locator('#cekmece-sayac').textContent()).includes('Tamam'));
+kontrol('geçerli seçimde kaydet açılıyor', !(await sayfa.locator('#btn-cekmece-kaydet').isDisabled()));
+
+await sayfa.locator('#btn-cekmece-kaydet').click();
+kontrol('kaydedince çekmece kapanıyor', !(await sayfa.locator('#cekmece').isVisible()));
+kontrol('kurulan kart önizlemede', (await onizlemeOku()).join() === secim.slice().sort((a, b) => a - b).join());
+kontrol('kart durumu kendi kurduğun',
+  (await sayfa.locator('#kart-durum').textContent()).includes('Kendi'));
+
+// 16. sayı seçilemiyor
+await sayfa.locator('#btn-kart-kur').click();
+await sayfa.locator('.sayi:text-is("85")').first().click();
+kontrol('15 doluyken yeni sayı eklenemiyor',
+  (await sayfa.locator('.sayi.secili').count()) === 15
+  && (await sayfa.locator('#bildirim').textContent()).includes('15 sayı doldu'));
+await sayfa.locator('#btn-cekmece-kapat').click();
+
+/* ---- kurulan kart ve profil oyuna taşınıyor ---- */
+await sayfa.locator('#btn-oyunu-baslat').click();
+const oyunKarti = await sayfa.$$eval('#kart > *', (els) =>
+  els.filter((e) => e.dataset.sayi).map((e) => Number(e.dataset.sayi)).sort((a, b) => a - b));
+kontrol('kurulan kart oyunda kullanılıyor', oyunKarti.join() === secim.slice().sort((a, b) => a - b).join());
+
+await sayfa.locator('#btn-menu').click();
+kontrol('oyundan geri lobiye dönüyor', await sayfa.locator('#ekran-lobi.ekran--acik').isVisible());
+
 /* ================= Kart yapısı (arayüzde) ================= */
 console.log('\nKart');
 
+// Akış: menü -> lobi -> oyun. Sonuç perdesi ve oyun ekranı lobiye döner.
+const menuyeDon = async () => {
+  if (await sayfa.locator('#perde').isVisible()) await sayfa.locator('#btn-anamenu').click();
+  if (await sayfa.locator('#ekran-oyun.ekran--acik').isVisible()) await sayfa.locator('#btn-menu').click();
+  if (await sayfa.locator('#ekran-lobi.ekran--acik').isVisible()) await sayfa.locator('#btn-lobi-geri').click();
+};
+const lobiyeGit = async () => {
+  if (await sayfa.locator('#ekran-lobi.ekran--acik').isVisible()) return;
+  if (await sayfa.locator('#perde').isVisible()) return sayfa.locator('#btn-anamenu').click();
+  if (await sayfa.locator('#ekran-oyun.ekran--acik').isVisible()) return sayfa.locator('#btn-menu').click();
+  await sayfa.locator('#btn-basla').click();
+};
+const oyunaBasla = async () => {
+  await lobiyeGit();
+  await sayfa.locator('#btn-oyunu-baslat').click();
+};
 const ayarSec = async (kutu, deger) => {
-  if (!(await sayfa.locator('#ekran-menu.ekran--acik').isVisible())) {
-    if (await sayfa.locator('#perde').isVisible()) await sayfa.locator('#btn-anamenu').click();
-    else await sayfa.locator('#btn-menu').click();
-  }
+  await menuyeDon();
   await sayfa.locator(`#${kutu} button[data-deger="${deger}"]`).click();
 };
 
 await ayarSec('secim-rakip', '0');
-await sayfa.locator('#btn-basla').click();
+await oyunaBasla();
 
 const kartOku = () => sayfa.$$eval('#kart > *', (els) =>
   els.map((e) => (e.dataset.sayi ? Number(e.dataset.sayi) : null)));
@@ -289,7 +414,7 @@ console.log('\nTek başına oyun');
 
 await ayarSec('secim-rakip', '0');
 await ayarSec('secim-isaret', 'otomatik');
-await sayfa.locator('#btn-basla').click();
+await oyunaBasla();
 kontrol('rakip yokken oyuncu şeridi gizli', await sayfa.locator('#oyuncular').isHidden());
 kontrol('başlangıçta ilan düğmeleri kapalı',
   (await sayfa.locator('[data-ilan][disabled]').count()) === 3);
@@ -329,7 +454,7 @@ kontrol('ilan düğmesinde kazanan adı yazıyor',
 console.log('\nİlan etmemek');
 
 await ayarSec('secim-rakip', '0');
-await sayfa.locator('#btn-basla').click();
+await oyunaBasla();
 await sayfa.locator('#btn-durdur').click();
 for (let i = 0; i < 90; i++) {
   if (await sayfa.locator('#btn-cek').isDisabled()) break;
@@ -358,7 +483,7 @@ console.log('\nRakipler');
 await ayarSec('secim-rakip', '2');
 await ayarSec('secim-isaret', 'elle');
 await ayarSec('secim-hiz', '2000');
-await sayfa.locator('#btn-basla').click();
+await oyunaBasla();
 
 kontrol('oyuncu şeridi görünüyor', await sayfa.locator('#oyuncular').isVisible());
 kontrol('şeritte 3 oyuncu var', (await sayfa.locator('.ocip').count()) === 3);
@@ -426,6 +551,7 @@ async function yerlesimSina(ad, w, h, enAz) {
   const p = await tarayici.newPage({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true });
   await p.goto(URL);
   await p.locator('#btn-basla').click();
+  await p.locator('#btn-oyunu-baslat').click();
   await p.locator('#btn-durdur').click();
   await p.locator('#btn-cek').click();
   await bekle(600);
@@ -433,7 +559,7 @@ async function yerlesimSina(ad, w, h, enAz) {
     const oyun = document.querySelector('#ekran-oyun');
     const tahta = document.querySelector('.tahta');
     const kart = document.querySelector('#kart').getBoundingClientRect();
-    const hucre = document.querySelector('.hucre').getBoundingClientRect();
+    const hucre = document.querySelector('#kart .hucre').getBoundingClientRect();
     const tas = document.querySelector('#cikan').getBoundingClientRect();
     return {
       dikey: oyun.scrollHeight - oyun.clientHeight,
