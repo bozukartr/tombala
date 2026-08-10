@@ -314,6 +314,8 @@
   const ASAMALAR = ILAN_TURLERI;
   const ASAMA_ADI = ILAN_ADI;
 
+  const SURUM = 'v3';   // menüde görünür; hangi yapının çalıştığını anlamak için
+
   const AVATARLAR = ['🎯', '🦁', '🐼', '🦄', '🐳', '🦖', '🍀', '⭐'];
   const RENKLER = ['#ffb43d', '#f0517a', '#34d39a', '#6bc5f5', '#c084fc', '#ff8a5b'];
 
@@ -620,13 +622,25 @@
   $('#btn-giris-google').onclick = () => girisYap('google');
   $('#btn-giris-anonim').onclick = () => girisYap('anonim');
 
+  /** Firebase hatasını kullanıcının anlayacağı ve bana rapor edebileceği hale getirir. */
+  function agHatasi(e, nerede) {
+    const m = String(e?.message || e || '');
+    if (m.includes('PERMISSION_DENIED') || e?.code === 'PERMISSION_DENIED') {
+      return `İzin reddedildi (${nerede}). Güvenlik kuralları yüklü değil ya da tarayıcı eski sürümü çalıştırıyor.`;
+    }
+    return m || 'İşlem başarısız';
+  }
+
   $('#btn-oda-kur').onclick = () => girisIsteyip(async () => {
     try {
       if (!L.kart) L.kart = kartUret();
       const kod = await A.ag.odaKur({ ...profil, ad: adim(), kart: L.kart }, ayarlar);
       odayaBagla(kod);
       bildir('Oda kuruldu: ' + kod);
-    } catch (e) { bildir(e.message || 'Oda kurulamadı', true); }
+    } catch (e) {
+      console.error('[tombala] oda kurulamadı', e);
+      bildir(agHatasi(e, 'oda kurma'), true);
+    }
   });
 
   $('#btn-odaya-katil').onclick = () => {
@@ -669,7 +683,8 @@
       await A.ag.odayaKatil(kod, { ...profil, ad: adim(), kart: L.kart });
       odayaBagla(kod);
     } catch (e) {
-      bildir(e.message || 'Odaya girilemedi', true);
+      console.error('[tombala] odaya girilemedi', e);
+      bildir(agHatasi(e, 'odaya katılma'), true);
       sfx.hata();
       $('#btn-katil').disabled = false;
     }
@@ -1385,4 +1400,7 @@
 
   /* ===================== Açılış ===================== */
   sesiAyarla(sesAcik);
+  Cekirdek.SURUM = SURUM;
+  $('#surum').textContent = SURUM;
+  console.info('[tombala] sürüm', SURUM);
 })();

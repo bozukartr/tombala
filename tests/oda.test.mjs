@@ -43,6 +43,11 @@ await A.p.waitForSelector('#ekran-lobi.ekran--acik', { timeout: 15000 });
 
 const kod = (await A.p.locator('#oda-kodu').textContent()).trim();
 kontrol('oda kodu 5 haneli', /^\d{5}$/.test(kod), kod);
+kontrol('kuranın kartı odaya yazıldı', await A.p.evaluate(async (k) => {
+  const r = await fetch(`http://127.0.0.1:9000/odalar/${k}.json?ns=tombala`);
+  const d = await r.json();
+  return Object.values(d.oyuncular).every((o) => (o.kart || '').split(',').length === 27);
+}, kod));
 kontrol('lobide oda kodu kutusu görünüyor', await A.p.locator('#oda-kodu-kutu').isVisible());
 kontrol('kuran kişi listede', (await A.p.locator('.oyuncu-satir').count()) === 1);
 kontrol('kuran kişi host (taç)',

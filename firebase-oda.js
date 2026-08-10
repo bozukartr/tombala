@@ -183,7 +183,9 @@ export async function odaKur(profil, ayarlar) {
     const kod = rastgeleKod();
     const benimYol = yol('odalar', kod, 'oyuncular', benimUid);
 
-    await fb.set(fb.ref(db, benimYol), oyuncuKaydi(profil, true));
+    // Kart, meta yazıldıktan SONRA gönderilir: kural kartı yalnızca
+    // "durum === lobi" iken kabul ediyor, meta yokken durum da yok.
+    await fb.set(fb.ref(db, benimYol), oyuncuKaydi({ ...profil, kart: null }, true));
 
     const meta = {
       hostId: benimUid,
@@ -199,6 +201,7 @@ export async function odaKur(profil, ayarlar) {
     if (sonuc.committed) {
       await fb.set(fb.ref(db, yol('odalar', kod, 'oyun')), { cikanlar: '', sonSayi: 0, cekildi: 0 });
       await fb.set(fb.ref(db, yol('odalar', kod, 'kazananlar')), { cinko1: '', cinko2: '', tombala: '' });
+      if (profil.kart) await fb.update(fb.ref(db, benimYol), { kart: kartiYaz(profil.kart) });
       varligiKur(kod);
       return kod;
     }
