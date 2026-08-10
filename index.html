@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Tombala" />
 <title>Tombala</title>
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=2" />
 </head>
 <body>
 
@@ -26,7 +26,17 @@
     </h1>
     <p class="slogan">Torbadan sayılar çıkar, kartını doldur.</p>
 
-    <button class="dugme dugme--ana" id="btn-basla">Oyna</button>
+    <button class="dugme dugme--ana" id="btn-basla">Botlarla oyna</button>
+
+    <div class="panel">
+      <div class="panel__bas"><h2 class="baslik">Çevrimiçi</h2></div>
+      <p class="yazi">Oda kur, 5 haneli kodu paylaş, arkadaşlarınla oyna.</p>
+      <div class="sur">
+        <button class="dugme dugme--ince" id="btn-oda-kur">Oda kur</button>
+        <button class="dugme dugme--ince" id="btn-odaya-katil">Odaya katıl</button>
+      </div>
+      <p class="not" id="ag-not" hidden></p>
+    </div>
 
     <div class="panel">
       <div class="panel__bas"><h2 class="baslik">Ayarlar</h2></div>
@@ -83,6 +93,26 @@
   </div>
 </section>
 
+<!-- ======================= ODAYA KATIL ======================= -->
+<section class="ekran" id="ekran-katil">
+  <div class="kutu">
+    <div class="bar">
+      <button class="ikon" id="btn-katil-geri" aria-label="Geri">‹</button>
+      <h2 class="baslik baslik--orta">Odaya katıl</h2>
+      <span class="ikon ikon--bos" aria-hidden="true"></span>
+    </div>
+    <p class="yazi" style="text-align:center">Odayı kuran kişideki 5 haneli kodu gir.</p>
+    <div class="kod-girisi" id="kod-girisi">
+      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="1. hane" />
+      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="2. hane" />
+      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="3. hane" />
+      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="4. hane" />
+      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="5. hane" />
+    </div>
+    <button class="dugme dugme--ana" id="btn-katil" disabled>Odaya gir</button>
+  </div>
+</section>
+
 <!-- ======================= LOBİ ======================= -->
 <section class="ekran" id="ekran-lobi">
   <div class="kutu">
@@ -90,6 +120,15 @@
       <button class="ikon" id="btn-lobi-geri" aria-label="Menüye dön">‹</button>
       <h2 class="baslik baslik--orta">Lobi</h2>
       <span class="ikon ikon--bos" aria-hidden="true"></span>
+    </div>
+
+    <div class="oda-kodu" id="oda-kodu-kutu" hidden>
+      <span class="etiket">Oda kodu</span>
+      <strong class="oda-kodu__deger" id="oda-kodu">—</strong>
+      <div class="sur">
+        <button class="dugme dugme--ince" id="btn-kod-kopyala">Kodu kopyala</button>
+        <button class="dugme dugme--ince" id="btn-kod-paylas">Paylaş</button>
+      </div>
     </div>
 
     <div class="panel">
@@ -128,6 +167,7 @@
       <ul class="oyuncu-listesi" id="lobi-oyuncular"></ul>
     </div>
 
+    <button class="dugme" id="btn-hazir" hidden>Hazırım</button>
     <button class="dugme dugme--ana" id="btn-oyunu-baslat">Oyunu başlat</button>
   </div>
 </section>
@@ -189,6 +229,21 @@
   </div>
 </div>
 
+<!-- ======================= GİRİŞ ======================= -->
+<div class="cekmece" id="giris" hidden>
+  <div class="cekmece__panel">
+    <div class="cekmece__bas">
+      <h3 class="baslik">Nasıl girmek istersin?</h3>
+      <button class="ikon" id="btn-giris-kapat" aria-label="Kapat">✕</button>
+    </div>
+    <p class="yazi">Çevrimiçi oynamak için bir kimlik gerekiyor. İsimsiz giriş yeterli;
+      Google ile girersen aynı hesabı başka cihazda da kullanabilirsin.</p>
+    <button class="dugme dugme--ana" id="btn-giris-google">Google ile gir</button>
+    <button class="dugme" id="btn-giris-anonim">İsimsiz gir</button>
+    <p class="uyari" id="giris-uyari"></p>
+  </div>
+</div>
+
 <!-- ======================= KART KURMA ======================= -->
 <div class="cekmece" id="cekmece" hidden>
   <div class="cekmece__panel">
@@ -208,6 +263,6 @@
 
 <div id="bildirim" role="status" aria-live="polite"></div>
 
-<script src="app.js" defer></script>
+<script src="app.js?v=2" defer></script>
 </body>
 </html>
