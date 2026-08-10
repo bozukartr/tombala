@@ -10,7 +10,78 @@
   const KART_SAYI = 15;   // karttaki toplam sayı
   const EN_BUYUK = 90;
 
+  const KART_BOSLUK = 4;  // hücreler arası
+  const KART_KENAR = 8;   // kartın iç payı
+  const HUCRE_ORAN = 1.12;
+  const HUCRE_EN_BUYUK = 58;
+
   const $ = (s) => document.querySelector(s);
+
+  /* ===================== Dokunma davranışı ===================== */
+  /* Çift dokunuşla yakınlaştırmayı CSS'teki `touch-action: manipulation`
+     kapatıyor. Aşağıdakiler eski iOS sürümleri ve çimdik jesti için. */
+
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((tur) => {
+    document.addEventListener(tur, (e) => e.preventDefault(), { passive: false });
+  });
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+
+  /* ===================== Ses ve titreşim ===================== */
+
+  let sesAcik = localStorage.getItem('tombala.ses') !== 'kapali';
+  let ac = null;   // AudioContext
+
+  function sesiAc() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) ac = new AC();
+  }
+  // Mobilde ses ancak bir dokunuştan sonra açılabilir.
+  document.addEventListener('pointerdown', sesiAc, { once: true });
+
+  function ton({ frek = 440, sure = .12, tip = 'sine', ses = .1, kaydir = 0, gecikme = 0 }) {
+    if (!sesAcik || !ac) return;
+    const t0 = ac.currentTime + gecikme;
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = tip;
+    osc.frequency.setValueAtTime(frek, t0);
+    if (kaydir) osc.frequency.exponentialRampToValueAtTime(Math.max(40, frek + kaydir), t0 + sure);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(ses, t0 + .012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + sure);
+    osc.connect(g).connect(ac.destination);
+    osc.start(t0);
+    osc.stop(t0 + sure + .02);
+  }
+
+  function cizirti({ sure = .07, ses = .06 }) {
+    if (!sesAcik || !ac) return;
+    const n = Math.floor(ac.sampleRate * sure);
+    const tampon = ac.createBuffer(1, n, ac.sampleRate);
+    const d = tampon.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+    const kaynak = ac.createBufferSource();
+    const g = ac.createGain();
+    g.gain.value = ses;
+    kaynak.buffer = tampon;
+    kaynak.connect(g).connect(ac.destination);
+    kaynak.start(ac.currentTime);
+  }
+
+  const sfx = {
+    dokun:   () => ton({ frek: 620, sure: .05, tip: 'triangle', ses: .05 }),
+    cek:     () => { cizirti({}); ton({ frek: 180, sure: .16, ses: .12, kaydir: -80 }); },
+    isaret:  () => { ton({ frek: 880, sure: .06, tip: 'square', ses: .045 }); cizirti({ sure: .04, ses: .035 }); },
+    cinko:   () => [523, 659, 784, 1047].forEach((f, i) => ton({ frek: f, sure: .26, ses: .095, gecikme: i * .08 })),
+    tombala: () => [392, 523, 659, 784, 1047, 1319].forEach((f, i) => ton({ frek: f, sure: .45, tip: 'triangle', ses: .1, gecikme: i * .1 })),
+    hata:    () => ton({ frek: 160, sure: .22, tip: 'sawtooth', ses: .08, kaydir: -60 }),
+  };
+
+  function titre(desen) {
+    if (!sesAcik || !navigator.vibrate) return;
+    try { navigator.vibrate(desen); } catch { /* desteklenmiyor */ }
+  }
 
   /* ===================== Kart üretimi ===================== */
 
@@ -104,6 +175,7 @@
   const ayarlar = {
     hiz: Number(localStorage.getItem('tombala.hiz')) || 3500,
     isaret: localStorage.getItem('tombala.isaret') || 'elle',
+    ses: sesAcik ? 'acik' : 'kapali',
   };
 
   const O = {
@@ -111,7 +183,6 @@
     isaretli: new Set(),
     torba: [],       // henüz çıkmamış sayılar
     cikanlar: [],    // çıkış sırasıyla
-    son: null,
     asama: 0,        // 0 yok, 1 çinko1, 2 çinko2, 3 tombala
     tamSatirlar: [false, false, false],
     zaman: null,
@@ -137,6 +208,32 @@
     bildirimZaman = setTimeout(() => el.classList.remove('acik'), 2400);
   }
 
+  /* ===================== Kart ölçüsü ===================== */
+  /* Kart hem genişliğe hem tahtada kalan boya göre ölçeklenir; mobilde
+     ekranın boşta kalan yerini doldurur ama asla taşmaz. */
+
+  function kartOlcule() {
+    const tahta = $('.tahta');
+    const kart = $('#kart');
+    if (!tahta || !kart || !tahta.clientWidth) return;
+
+    const ipucuBoy = $('#ipucu').offsetHeight + 8;
+    const enAlan = tahta.clientWidth;
+    const boyAlan = Math.max(tahta.clientHeight - ipucuBoy, 80);
+
+    const endenHucre = (enAlan - 2 * KART_KENAR - (SUTUN - 1) * KART_BOSLUK) / SUTUN;
+    const boydanHucre = (boyAlan - 2 * KART_KENAR - (SATIR - 1) * KART_BOSLUK) / (SATIR * HUCRE_ORAN);
+    const hucre = Math.max(18, Math.min(endenHucre, boydanHucre, HUCRE_EN_BUYUK));
+    const kartEn = hucre * SUTUN + (SUTUN - 1) * KART_BOSLUK + 2 * KART_KENAR;
+
+    kart.style.setProperty('--kart-en', `${Math.floor(kartEn)}px`);
+    kart.style.setProperty('--hucre-en', `${Math.floor(hucre)}px`);
+  }
+
+  const olcuTazele = () => requestAnimationFrame(kartOlcule);
+  addEventListener('resize', olcuTazele);
+  addEventListener('orientationchange', olcuTazele);
+
   /* ===================== Ana menü ===================== */
 
   function secimKur(id, anahtar, uygula) {
@@ -146,20 +243,37 @@
       if (!b) return;
       [...kutu.children].forEach((x) => x.classList.toggle('secili', x === b));
       const deger = b.dataset.deger;
+      ayarlar[anahtar] = anahtar === 'hiz' ? Number(deger) : deger;
       localStorage.setItem('tombala.' + anahtar, deger);
       uygula(deger);
+      sfx.dokun();
     });
-    // kayıtlı ayarı işaretle
     [...kutu.children].forEach((b) => {
       b.classList.toggle('secili', b.dataset.deger === String(ayarlar[anahtar]));
     });
   }
 
-  secimKur('#secim-hiz', 'hiz', (v) => { ayarlar.hiz = Number(v); });
-  secimKur('#secim-isaret', 'isaret', (v) => { ayarlar.isaret = v; });
+  secimKur('#secim-hiz', 'hiz', () => {});
+  secimKur('#secim-isaret', 'isaret', () => {});
+  secimKur('#secim-ses', 'ses', (v) => sesiAyarla(v === 'acik', true));
+
+  // kullanici=true ise ses motoru hemen açılır. Açılışta çağrıldığında
+  // açmıyoruz: dokunuş öncesi AudioContext kurmak tarayıcıda uyarı üretir.
+  function sesiAyarla(acikMi, kullanici = false) {
+    sesAcik = acikMi;
+    ayarlar.ses = acikMi ? 'acik' : 'kapali';
+    localStorage.setItem('tombala.ses', ayarlar.ses);
+    $('#btn-ses').textContent = acikMi ? '🔊' : '🔇';
+    [...$('#secim-ses').children].forEach((b) => {
+      b.classList.toggle('secili', b.dataset.deger === ayarlar.ses);
+    });
+    if (acikMi && kullanici) sesiAc();
+  }
+
+  $('#btn-ses').onclick = () => { sesiAyarla(!sesAcik, true); if (sesAcik) sfx.dokun(); };
 
   $('#btn-basla').onclick = oyunuBaslat;
-  $('#btn-menu').onclick = () => { zamanDurdur(); ekranGoster('ekran-menu'); };
+  $('#btn-menu').onclick = () => { zamanDurdur(); ekranGoster('ekran-menu'); sfx.dokun(); };
   $('#btn-anamenu').onclick = () => { perdeKapat(); zamanDurdur(); ekranGoster('ekran-menu'); };
   $('#btn-tekrar').onclick = () => { perdeKapat(); oyunuBaslat(); };
   $('#btn-cek').onclick = () => { if (!O.bitti) sayiCek(); };
@@ -173,18 +287,19 @@
     O.isaretli = new Set();
     O.torba = karistir(Array.from({ length: EN_BUYUK }, (_, i) => i + 1));
     O.cikanlar = [];
-    O.son = null;
     O.asama = 0;
     O.tamSatirlar = [false, false, false];
     O.duraklat = false;
     O.bitti = false;
 
+    ekranGoster('ekran-oyun');
     kartCiz();
     ekraniTazele();
-    ekranGoster('ekran-oyun');
+    olcuTazele();
     $('#cikan').textContent = '—';
     $('#cikan').classList.add('bos');
     $('#btn-durdur').textContent = 'Duraklat';
+    sfx.dokun();
     zamanKur();
   }
 
@@ -206,6 +321,7 @@
     O.duraklat = !O.duraklat;
     $('#btn-durdur').textContent = O.duraklat ? 'Devam et' : 'Duraklat';
     if (O.duraklat) zamanDurdur(); else zamanKur();
+    sfx.dokun();
     ekraniTazele();
   }
 
@@ -214,12 +330,11 @@
 
     const n = O.torba.pop();
     O.cikanlar.push(n);
-    O.son = n;
 
     const tas = $('#cikan');
     tas.textContent = n;
     tas.classList.remove('bos', 'dus');
-    void tas.offsetWidth;         // animasyonu yeniden tetikle
+    void tas.offsetWidth;          // animasyonu yeniden tetikle
     tas.classList.add('dus');
 
     const torba = $('#torba');
@@ -227,14 +342,18 @@
     void torba.offsetWidth;
     torba.classList.add('sik');
 
+    sfx.cek();
+    titre(8);
+
     if (ayarlar.isaret === 'otomatik' && O.kart.includes(n)) {
       O.isaretli.add(n);
+      sfx.isaret();
     }
 
     ekraniTazele();
     asamaKontrol();
-    if (O.bitti) return;                                  // tombala oldu
-    if (!O.torba.length) return oyunuBitir('torba');       // son sayı da çıktı
+    if (O.bitti) return;                                   // tombala oldu
+    if (!O.torba.length) return oyunuBitir('torba');        // son sayı da çıktı
     zamanKur();
   }
 
@@ -249,6 +368,8 @@
 
     if (!O.cikanlar.includes(n)) {
       bildir('Bu sayı henüz çıkmadı', true);
+      sfx.hata();
+      titre([15, 40, 15]);
       hucre.classList.remove('sars');
       void hucre.offsetWidth;
       hucre.classList.add('sars');
@@ -256,6 +377,8 @@
     }
 
     O.isaretli.add(n);
+    sfx.isaret();
+    titre(12);
     ekraniTazele();
     asamaKontrol();
   });
@@ -285,9 +408,13 @@
     if (adet >= 2 && O.asama < 2) {
       O.asama = 2;
       bildir('2. Çinko!');
+      sfx.cinko();
+      titre([30, 40, 30]);
     } else if (adet >= 1 && O.asama < 1) {
       O.asama = 1;
       bildir('1. Çinko!');
+      sfx.cinko();
+      titre(30);
     }
     rozetleriTazele();
   }
@@ -295,14 +422,17 @@
   function oyunuBitir(sebep) {
     O.bitti = true;
     zamanDurdur();
-    kartCiz();
+    hucreleriTazele();
 
     const kazanildi = sebep === 'tombala';
+    if (kazanildi) { sfx.tombala(); titre([50, 30, 50, 30, 90]); }
+
     $('#sonuc-baslik').textContent = kazanildi ? 'Tombala!' : 'Torba bitti';
     $('#sonuc-yazi').textContent = kazanildi
       ? `${O.cikanlar.length} sayıda 15'i de topladın.`
       : `90 sayı çıktı. ${O.isaretli.size}/15 işaretledin.`;
     $('#perde').hidden = false;
+    ekraniTazele();
   }
 
   const perdeKapat = () => { $('#perde').hidden = true; };
@@ -383,4 +513,7 @@
     $('#btn-cek').disabled = O.bitti || !O.torba.length;
     $('#btn-durdur').disabled = O.bitti;
   }
+
+  /* ===================== Açılış ===================== */
+  sesiAyarla(sesAcik);
 })();
