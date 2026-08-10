@@ -2,9 +2,17 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<!-- user-scalable=no + maximum-scale=1: çift dokunuş ve çimdik yakınlaştırmayı kapatır.
+     iOS Safari bunları yok sayar; asıl iş CSS'teki touch-action ve app.js'teki jest engelinde. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#171029" />
+<meta name="color-scheme" content="dark" />
 <meta name="description" content="Tarayıcıda oynanan tombala." />
+<!-- Ana ekrana eklendiğinde tarayıcı çubuğu olmadan, uygulama gibi açılsın -->
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Tombala" />
 <title>Tombala</title>
 <link rel="stylesheet" href="styles.css" />
 </head>
@@ -39,6 +47,14 @@
           <button type="button" data-deger="otomatik">Otomatik</button>
         </div>
       </div>
+
+      <div class="alan">
+        <span class="etiket">Ses ve titreşim</span>
+        <div class="secim" id="secim-ses" role="radiogroup" aria-label="Ses ve titreşim">
+          <button type="button" data-deger="acik" class="secili">Açık</button>
+          <button type="button" data-deger="kapali">Kapalı</button>
+        </div>
+      </div>
     </div>
 
     <div class="panel">
@@ -58,10 +74,20 @@
 
 <!-- ======================= OYUN ======================= -->
 <section class="ekran ekran--oyun" id="ekran-oyun">
-  <header class="ust">
-    <div class="ust__sol">
+
+  <header class="bar">
+    <button class="ikon" id="btn-menu" aria-label="Menüye dön">‹</button>
+    <div class="cipler">
+      <span class="cip"><b id="sayi-cikan">0</b> çıkan</span>
+      <span class="cip"><b id="sayi-kalan">90</b> kalan</span>
+    </div>
+    <button class="ikon" id="btn-ses" aria-label="Sesi aç kapat">🔊</button>
+  </header>
+
+  <section class="sahne">
+    <div class="sahne__ust">
       <div class="torba" id="torba" aria-hidden="true">
-        <svg viewBox="0 0 48 52" width="40" height="44">
+        <svg viewBox="0 0 48 52" width="44" height="48">
           <path d="M12 14h24c6 6 8 14 8 22 0 9-9 14-20 14S4 45 4 36c0-8 2-16 8-22z" fill="#3a2a5c" stroke="#54407f" stroke-width="2"/>
           <path d="M12 14c4-3 8-4 12-4s8 1 12 4" fill="none" stroke="#ffb43d" stroke-width="3" stroke-linecap="round"/>
           <circle cx="24" cy="34" r="7" fill="#241a3d"/>
@@ -69,14 +95,8 @@
       </div>
       <div class="tas tas--dev bos" id="cikan" aria-live="polite" aria-label="Çıkan sayı">—</div>
     </div>
-
-    <div class="ust__sag">
-      <div class="sayac"><b id="sayi-cikan">0</b><small>çıkan</small></div>
-      <div class="sayac"><b id="sayi-kalan">90</b><small>kalan</small></div>
-    </div>
-  </header>
-
-  <div class="sonlar" id="sonlar" aria-label="Son çıkan sayılar"></div>
+    <div class="sonlar" id="sonlar" aria-label="Son çıkan sayılar"></div>
+  </section>
 
   <div class="rozetler">
     <span class="rozet" id="rozet-cinko1">1. Çinko</span>
@@ -91,8 +111,7 @@
 
   <footer class="alt">
     <button class="dugme dugme--kucuk" id="btn-durdur">Duraklat</button>
-    <button class="dugme dugme--kucuk" id="btn-cek">Sayı çek</button>
-    <button class="dugme dugme--kucuk dugme--sade" id="btn-menu">Menü</button>
+    <button class="dugme dugme--kucuk dugme--vurgu" id="btn-cek">Sayı çek</button>
   </footer>
 </section>
 
