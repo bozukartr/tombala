@@ -1,0 +1,91 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "odalar": {
+      // Yorumlar // ile yazılır. "//" ADLI bir anahtar kural motorunda yol
+      // parçası sayılır ve dosyanın tamamının reddedilmesine yol açar.
+      // numChildren() diye bir kural metodu da yoktur; oyuncu sayısı sınırı
+      // istemcide uygulanır.
+      "$kod": {
+        // Oda kodunu bilen ve giriş yapmış herkes okuyabilir. odalar listesi okunamaz.
+        ".read": "auth != null && $kod.matches(/^[0-9]{5}$/)",
+
+        "meta": {
+          ".write": "auth != null && (!data.exists() || data.child('hostId').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['hostId', 'durum', 'kuruldu'])",
+          "durum": { ".validate": "newData.val() === 'lobi' || newData.val() === 'oyun' || newData.val() === 'bitti'" },
+          "kuruldu": { ".validate": "newData.isNumber()" },
+          "hostId": {
+            // Host koptuysa ya da odadan tamamen çıktıysa devralınabilir.
+            ".write": "auth != null && (!data.exists() || data.val() === auth.uid || !root.child('odalar/' + $kod + '/oyuncular/' + data.val()).exists() || root.child('odalar/' + $kod + '/oyuncular/' + data.val() + '/bagli').val() === false)",
+            // Kimse üçüncü birini host yapamaz.
+            ".validate": "newData.val() === auth.uid || root.child('odalar/' + $kod + '/oyuncular/' + newData.val()).exists()"
+          },
+          "ayarlar": {
+            "hiz": { ".validate": "newData.isNumber() && newData.val() >= 1000 && newData.val() <= 20000" },
+            "isaret": { ".validate": "newData.val() === 'elle' || newData.val() === 'otomatik'" },
+            "$baska": { ".validate": false }
+          }
+        },
+
+        "oyuncular": {
+          "$uid": {
+            // Oyuncu yalnızca kendi düğümünü yazar.
+            ".write": "auth != null && $uid === auth.uid",
+            ".validate": "newData.hasChildren(['ad', 'avatar', 'renk', 'katildi'])",
+            "ad": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 12" },
+            "avatar": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 4" },
+            "renk": { ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)" },
+            "hazir": { ".validate": "newData.isBoolean()" },
+            "bagli": { ".validate": "newData.isBoolean()" },
+            "katildi": { ".validate": "newData.isNumber()" },
+            // Kart yalnızca lobide değiştirilebilir; oyun başladıktan sonra sabit.
+            "kart": {
+              ".validate": "newData.isString() && newData.val().length <= 120 && (newData.val() === '' || root.child('odalar/' + $kod + '/meta/durum').val() === 'lobi')"
+            },
+            "isaretli": { ".validate": "newData.isString() && newData.val().length <= 270" },
+            "$baska": { ".validate": false }
+          }
+        },
+
+        "oyun": {
+          // Sayıları yalnızca host çeker.
+          ".write": "auth != null && root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid",
+          "cikanlar": { ".validate": "newData.isString() && newData.val().length <= 270" },
+          "sonSayi": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90" },
+          "cekildi": { ".validate": "newData.isNumber()" },
+          "$baska": { ".validate": false }
+        },
+
+        "kazananlar": {
+          // Kazananları yalnızca host yazar; istemcinin iddiası tek başına yeterli değildir.
+          ".write": "auth != null && root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid",
+          "cinko1": { ".validate": "newData.isString() && newData.val().length <= 300" },
+          "cinko2": { ".validate": "newData.isString() && newData.val().length <= 300" },
+          "tombala": { ".validate": "newData.isString() && newData.val().length <= 300" },
+          "$baska": { ".validate": false }
+        },
+
+        "ilanlar": {
+          ".write": "auth != null && root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid",
+          "$uid": {
+            // Oyuncu kendi ilanını açar, host karara bağlar. Yazma izni üst
+            // düğümde verildiği için oyuncu kendi gecerli alanına da yazabilir;
+            // bu yalnızca kendi ilanını geçersiz kılar, kazanmaya yaramaz.
+            ".write": "auth != null && ($uid === auth.uid || root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid)",
+            "tur": { ".validate": "newData.val() === 'cinko1' || newData.val() === 'cinko2' || newData.val() === 'tombala'" },
+            "cekilisNo": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90" },
+            "zaman": { ".validate": "newData.isNumber()" },
+            "gecerli": { ".validate": "newData.isBoolean()" },
+            "sebep": { ".validate": "newData.isString() && newData.val().length <= 120" },
+            "$baska": { ".validate": false }
+          }
+        },
+
+        "$baska": { ".validate": false }
+      }
+    }
+  }
+}

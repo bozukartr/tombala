@@ -289,6 +289,43 @@ img, svg { -webkit-user-drag: none; user-select: none; }
 .oyuncu-satir__etiket { font-size: 12px; color: var(--soluk); }
 .oyuncu-satir__etiket.hazir { color: var(--yesil); }
 
+/* ---------- Oda kodu ---------- */
+.oda-kodu {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: var(--gece-2);
+  border: 1px solid var(--cizgi);
+  border-radius: 20px;
+  padding: 14px;
+}
+.oda-kodu[hidden] { display: none; }
+.oda-kodu__deger {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  font-variant-numeric: tabular-nums;
+  color: var(--safran);
+  line-height: 1.1;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.oda-kodu .sur { width: 100%; }
+
+.kod-girisi { display: flex; gap: 8px; justify-content: center; }
+.kod-girisi input {
+  width: 56px; height: 68px;
+  text-align: center;
+  background: var(--gece-2);
+  border: 2px solid var(--cizgi);
+  border-radius: var(--yuvarlak);
+  color: var(--fildisi);
+  font-family: inherit;
+  font-size: 30px;
+  font-weight: 800;
+}
+.kod-girisi input:focus-visible { outline: 3px solid var(--safran); outline-offset: 2px; }
+.not { color: var(--soluk); font-size: 13px; text-align: center; margin: 0; }
+.not[hidden] { display: none; }
+
 /* ---------- Kart kurma çekmecesi ---------- */
 .cekmece {
   position: fixed; inset: 0;
@@ -621,8 +658,10 @@ img, svg { -webkit-user-drag: none; user-select: none; }
 /* ---------- Çok dar ekran ---------- */
 @media (max-width: 340px) {
   :root { --bosluk: 10px; }
+  .kod-girisi input { width: 46px; height: 58px; font-size: 24px; }
   /* Yalnızca logodaki taşlar. Buraya sade `.tas` yazılırsa aynı özgüllükte
      olduğu ve dosyada sonra geldiği için çıkan sayı taşını da küçültür. */
   .logo .tas { width: 32px; height: 38px; font-size: 17px; }
   .cip { padding: 4px 9px; font-size: 11px; }
 }
+.oyuncu-satir.kopuk { opacity: .45; }

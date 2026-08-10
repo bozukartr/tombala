@@ -529,7 +529,10 @@
   $('#btn-ses').onclick = () => { sesiAyarla(!sesAcik, true); if (sesAcik) sfx.dokun(); };
 
   $('#btn-basla').onclick = lobiyeGec;
-  $('#btn-lobi-geri').onclick = () => { ekranGoster('ekran-menu'); sfx.dokun(); };
+  $('#btn-lobi-geri').onclick = () => {
+    sfx.dokun();
+    if (cevrimici()) odadanAyril(); else ekranGoster('ekran-menu');
+  };
   $('#btn-oyunu-baslat').onclick = oyunuBaslat;
   $('#btn-menu').onclick = () => { oyunuBirak(); lobiyeGec(); sfx.dokun(); };
   $('#btn-anamenu').onclick = () => { perdeKapat(); oyunuBirak(); lobiyeGec(); };
@@ -545,14 +548,205 @@
   });
   $('#btn-durdur').onclick = duraklatDegistir;
 
+  /* ===================== Çevrimiçi oda ===================== */
+  /* Ağ katmanı yalnızca çevrimiçi moda geçilirken yükleniyor; botlu yerel mod
+     hiçbir ağ bağımlılığı taşımıyor ve file:// üzerinden çalışmaya devam ediyor. */
+
+  const A = {
+    ag: null,          // firebase-oda.js modülü
+    kullanici: null,   // { uid, ad, anonim }
+    kod: null,         // oda kodu
+    oda: null,         // son anlık görüntü
+    birak: null,       // dinlemeyi bırakma işlevi
+    bekleyen: null,    // giriş sonrası yapılacak iş
+  };
+  const cevrimici = () => !!A.kod;
+
+  async function agiYukle() {
+    if (A.ag) return A.ag;
+    const [modul, ayar] = await Promise.all([
+      import('./firebase-oda.js'),
+      import('./firebase-config.js'),
+    ]);
+    await modul.baslat(ayar.firebaseConfig);
+    A.ag = modul;
+    A.kullanici = await modul.oturumuBekle();
+    return modul;
+  }
+
+  /** Giriş yapılmışsa isi çalıştırır, değilse giriş çekmecesini açar. */
+  async function girisIsteyip(is) {
+    try {
+      await agiYukle();
+    } catch (e) {
+      bildir('Çevrimiçi moda bağlanılamadı', true);
+      $('#ag-not').hidden = false;
+      $('#ag-not').textContent = 'Çevrimiçi mod bir sunucu üzerinden açılmalı (file:// çalışmaz).';
+      return;
+    }
+    if (A.kullanici) return is();
+    A.bekleyen = is;
+    $('#giris-uyari').textContent = '';
+    $('#giris').hidden = false;
+  }
+
+  $('#btn-giris-kapat').onclick = () => { $('#giris').hidden = true; A.bekleyen = null; };
+
+  async function girisYap(tur) {
+    $('#giris-uyari').textContent = '';
+    try {
+      A.kullanici = tur === 'google' ? await A.ag.girisGoogle() : await A.ag.girisAnonim();
+      $('#giris').hidden = true;
+      if (profil.ad === '' && A.kullanici.ad) {
+        profil.ad = A.kullanici.ad.slice(0, 12);
+        localStorage.setItem('tombala.ad', profil.ad);
+      }
+      const is = A.bekleyen;
+      A.bekleyen = null;
+      if (is) await is();
+    } catch (e) {
+      $('#giris-uyari').textContent = girisHatasi(e);
+    }
+  }
+  const girisHatasi = (e) => {
+    const k = e?.code || '';
+    if (k.includes('popup-blocked')) return 'Açılır pencere engellendi, izin ver ve tekrar dene.';
+    if (k.includes('popup-closed')) return 'Giriş penceresi kapatıldı.';
+    if (k.includes('operation-not-allowed')) return 'Bu giriş yöntemi Firebase konsolunda açık değil.';
+    if (k.includes('unauthorized-domain')) return 'Bu alan adı Firebase\'de yetkili değil.';
+    return e?.message || 'Giriş yapılamadı';
+  };
+
+  $('#btn-giris-google').onclick = () => girisYap('google');
+  $('#btn-giris-anonim').onclick = () => girisYap('anonim');
+
+  $('#btn-oda-kur').onclick = () => girisIsteyip(async () => {
+    try {
+      if (!L.kart) L.kart = kartUret();
+      const kod = await A.ag.odaKur({ ...profil, ad: adim(), kart: L.kart }, ayarlar);
+      odayaBagla(kod);
+      bildir('Oda kuruldu: ' + kod);
+    } catch (e) { bildir(e.message || 'Oda kurulamadı', true); }
+  });
+
+  $('#btn-odaya-katil').onclick = () => {
+    kodGirisiniTemizle();
+    ekranGoster('ekran-katil');
+    kodKutulari[0].focus();
+  };
+  $('#btn-katil-geri').onclick = () => { ekranGoster('ekran-menu'); sfx.dokun(); };
+
+  const kodKutulari = [...document.querySelectorAll('#kod-girisi input')];
+  const kodMetni = () => kodKutulari.map((i) => i.value).join('');
+  const kodGirisiniTemizle = () => {
+    kodKutulari.forEach((i) => { i.value = ''; });
+    $('#btn-katil').disabled = true;
+  };
+  kodKutulari.forEach((kutu, i) => {
+    kutu.addEventListener('input', () => {
+      kutu.value = kutu.value.replace(/\D/g, '').slice(0, 1);
+      if (kutu.value && i < kodKutulari.length - 1) kodKutulari[i + 1].focus();
+      $('#btn-katil').disabled = kodMetni().length !== 5;
+    });
+    kutu.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !kutu.value && i > 0) kodKutulari[i - 1].focus();
+    });
+    kutu.addEventListener('paste', (e) => {
+      const d = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 5);
+      if (!d) return;
+      e.preventDefault();
+      d.split('').forEach((ch, k) => { kodKutulari[k].value = ch; });
+      kodKutulari[Math.min(d.length, 4)].focus();
+      $('#btn-katil').disabled = kodMetni().length !== 5;
+    });
+  });
+
+  $('#btn-katil').onclick = () => girisIsteyip(async () => {
+    const kod = kodMetni();
+    $('#btn-katil').disabled = true;
+    try {
+      if (!L.kart) L.kart = kartUret();
+      await A.ag.odayaKatil(kod, { ...profil, ad: adim(), kart: L.kart });
+      odayaBagla(kod);
+    } catch (e) {
+      bildir(e.message || 'Odaya girilemedi', true);
+      sfx.hata();
+      $('#btn-katil').disabled = false;
+    }
+  });
+
+  function odayaBagla(kod) {
+    if (A.birak) A.birak();
+    A.kod = kod;
+    A.birak = A.ag.odayiDinle(kod, odaGuncellendi);
+    $('#oda-kodu').textContent = kod;
+    lobiKur();
+    ekranGoster('ekran-lobi');
+  }
+
+  async function odaGuncellendi(oda) {
+    if (!oda) {
+      bildir('Oda kapandı', true);
+      odadanAyril();
+      return;
+    }
+    A.oda = oda;
+    await A.ag.hostDevralmayiDene(A.kod, oda);
+    // Kartım sunucudakinden farklıysa (lobide değiştirdiysem) eşitle.
+    const benimKayit = oda.oyuncular[A.ag.uid()];
+    if (benimKayit && oda.meta.durum === 'lobi' && L.kart) {
+      const yerel = A.ag.kartiYaz(L.kart);
+      if (A.ag.kartiYaz(benimKayit.kart || Array(27).fill(null)) !== yerel) {
+        A.ag.beniGuncelle(A.kod, { kart: L.kart });
+      }
+    }
+    if (ekranAcikMi('ekran-lobi')) lobiTazele();
+  }
+
+  const ekranAcikMi = (id) => $('#' + id).classList.contains('ekran--acik');
+
+  async function odadanAyril() {
+    if (A.birak) A.birak();
+    A.birak = null;
+    if (A.kod && A.ag) { try { await A.ag.odadanCik(A.kod); } catch { /* kopmuş */ } }
+    A.kod = null;
+    A.oda = null;
+    ekranGoster('ekran-menu');
+  }
+
+  $('#btn-hazir').onclick = async () => {
+    if (!cevrimici()) return;
+    const ben = A.oda?.oyuncular?.[A.ag.uid()];
+    await A.ag.beniGuncelle(A.kod, { hazir: !ben?.hazir });
+    sfx.dokun();
+  };
+
+  $('#btn-kod-kopyala').onclick = async () => {
+    try { await navigator.clipboard.writeText(A.kod); bildir('Kod kopyalandı'); }
+    catch { bildir('Kopyalanamadı', true); }
+  };
+  $('#btn-kod-paylas').onclick = async () => {
+    const metin = `Tombala oynayalım. Oda kodu: ${A.kod}\n${location.href.split('?')[0]}`;
+    if (navigator.share) { try { await navigator.share({ title: 'Tombala', text: metin }); } catch { /* iptal */ } }
+    else {
+      try { await navigator.clipboard.writeText(metin); bildir('Davet kopyalandı'); }
+      catch { bildir('Paylaşım desteklenmiyor', true); }
+    }
+  };
+
   /* ===================== Lobi ===================== */
 
   function lobiyeGec() {
+    lobiKur();
+    ekranGoster('ekran-lobi');
+  }
+
+  /** Lobinin profil bölümünü hazırlar. Hem yerel hem çevrimiçi giriş çağırır. */
+  function lobiKur() {
     if (!L.kart) L.kart = kartUret();
     $('#in-ad').value = profil.ad;
     seciciCiz();
     lobiTazele();
-    ekranGoster('ekran-lobi');
   }
 
   function seciciCiz() {
@@ -571,6 +765,7 @@
       b.onclick = () => {
         profil.avatar = a;
         localStorage.setItem('tombala.avatar', a);
+        if (cevrimici()) A.ag.beniGuncelle(A.kod, { avatar: a });
         seciciCiz();
         lobiTazele();
         sfx.dokun();
@@ -588,6 +783,7 @@
       b.onclick = () => {
         profil.renk = r;
         localStorage.setItem('tombala.renk', r);
+        if (cevrimici()) A.ag.beniGuncelle(A.kod, { renk: r });
         seciciCiz();
         lobiTazele();
         sfx.dokun();
@@ -596,15 +792,21 @@
     }
   }
 
+  let adZaman;
   $('#in-ad').addEventListener('input', (e) => {
     profil.ad = e.target.value.slice(0, 12);
     localStorage.setItem('tombala.ad', profil.ad);
     lobiTazele();
+    if (cevrimici()) {   // her tuşta yazma; kısa bir bekleme sonrası gönder
+      clearTimeout(adZaman);
+      adZaman = setTimeout(() => A.ag.beniGuncelle(A.kod, { ad: adim() }), 400);
+    }
   });
 
   $('#btn-rastgele-kart').onclick = () => {
     L.kart = kartUret();
     L.kurulmus = false;
+    if (cevrimici()) A.ag.beniGuncelle(A.kod, { kart: L.kart });
     lobiTazele();
     sfx.dokun();
     titre(10);
@@ -616,21 +818,57 @@
 
     const liste = $('#lobi-oyuncular');
     liste.innerHTML = '';
-    const satir = (ad, avatar, renk, etiket, hazir) => {
+    const satir = (ad, avatar, renk, etiket, hazir, kopuk = false) => {
       const li = document.createElement('li');
-      li.className = 'oyuncu-satir';
+      li.className = 'oyuncu-satir' + (kopuk ? ' kopuk' : '');
       li.innerHTML = `
         <span class="oyuncu-satir__yuz" style="background:${kacis(renk)}">${kacis(avatar)}</span>
         <span class="oyuncu-satir__ad">${kacis(ad)}</span>
         <span class="oyuncu-satir__etiket ${hazir ? 'hazir' : ''}">${kacis(etiket)}</span>`;
       liste.append(li);
     };
+
+    $('#oda-kodu-kutu').hidden = !cevrimici();
+    $('#btn-hazir').hidden = !cevrimici();
+
+    if (cevrimici() && A.oda) {
+      const benimId = A.ag.uid();
+      const hostId = A.oda.meta.hostId;
+      const oyuncular = Object.entries(A.oda.oyuncular)
+        .sort((a, b) => (a[1].katildi || 0) - (b[1].katildi || 0));
+      for (const [id, o] of oyuncular) {
+        const etiket = !o.bagli ? 'bağlantı koptu'
+          : o.hazir ? 'hazır'
+          : o.kart ? 'kart seçti' : 'kart bekleniyor';
+        satir(
+          (id === benimId ? 'Sen' : o.ad) + (id === hostId ? ' 👑' : ''),
+          o.avatar, o.renk, etiket, o.hazir && o.bagli, !o.bagli,
+        );
+      }
+      $('#lobi-sayi').textContent = `${oyuncular.length}/6`;
+      const ben = A.oda.oyuncular[benimId];
+      $('#btn-hazir').textContent = ben?.hazir ? 'Hazır değilim' : 'Hazırım';
+      const hostum = hostId === benimId;
+      const herkesHazir = oyuncular.length >= 2 && oyuncular.every(([, o]) => o.hazir && o.kart);
+      const bas = $('#btn-oyunu-baslat');
+      bas.hidden = !hostum;
+      // Oyun senkronu henüz yok: oda ve lobi çalışıyor, tur akışı sıradaki adım.
+      bas.disabled = true;
+      bas.textContent = herkesHazir ? 'Oyun senkronu sıradaki adımda' : 'Herkes hazır değil';
+      return;
+    }
+
+    // Yerel mod
     satir(adim(), profil.avatar, profil.renk, 'kartın hazır', true);
     for (let i = 0; i < ayarlar.rakip; i++) {
       const b = botTanim(i);
       satir(b.ad, b.avatar, b.renk, 'hazır', true);
     }
     $('#lobi-sayi').textContent = `${1 + ayarlar.rakip}/${1 + ayarlar.rakip}`;
+    const bas = $('#btn-oyunu-baslat');
+    bas.hidden = false;
+    bas.disabled = false;
+    bas.textContent = 'Oyunu başlat';
   }
 
   /** Kartı dokunulamaz biçimde çizer (lobi önizlemesi). */
@@ -662,6 +900,7 @@
     try {
       L.kart = Cekirdek.sayilardanKart([...L.secim]);
       L.kurulmus = true;
+      if (cevrimici()) A.ag.beniGuncelle(A.kod, { kart: L.kart });
       $('#cekmece').hidden = true;
       lobiTazele();
       bildir('Kartın kaydedildi');
