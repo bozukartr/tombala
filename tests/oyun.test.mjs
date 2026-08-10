@@ -88,6 +88,144 @@ kontrol('torba 90 sayının hepsini içeriyor', await sayfa.evaluate(() => {
   return t.length === 90 && new Set(t).size === 90 && Math.min(...t) === 1 && Math.max(...t) === 90;
 }));
 
+/* ================= Çekirdek: hakem ================= */
+console.log('\nHakem');
+
+// Test kurgusu: iki oyuncu, kartları ve işaretleri elle kuruluyor.
+const kurgu = () => sayfa.evaluate(() => {
+  const k1 = Tombala.kartUret();
+  const k2 = Tombala.kartUret();
+  window.__t = {
+    k1, k2,
+    s1: Tombala.satirSayilari(k1, 0),           // 1. oyuncunun ilk satırı
+    s2: Tombala.satirSayilari(k2, 0),
+    h1: Tombala.kartSayilari(k1),
+    h2: Tombala.kartSayilari(k2),
+  };
+  return true;
+});
+await kurgu();
+
+const coz = (kod) => sayfa.evaluate(kod);
+
+kontrol('hak edilen ilan kabul ediliyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [{ id: 'a', kart: t.k1, isaretli: new Set(t.s1) }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'a', tur: 'cinko1', cekilisNo: 10, zaman: 1 }],
+    oyuncular, cikanlar: t.h1, kazananlar: { cinko1: [], cinko2: [], tombala: [] },
+  });
+  return r.sonuclar.a.gecerli && r.kazananlar.cinko1.join() === 'a' && !r.bitti;
+}));
+
+kontrol('hak edilmeyen ilan reddediliyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [{ id: 'a', kart: t.k1, isaretli: new Set() }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'a', tur: 'cinko1', cekilisNo: 10, zaman: 1 }],
+    oyuncular, cikanlar: t.h1, kazananlar: { cinko1: [], cinko2: [], tombala: [] },
+  });
+  return !r.sonuclar.a.gecerli && r.sonuclar.a.sebep.includes('Tamamlanmış satır yok')
+      && r.kazananlar.cinko1.length === 0;
+}));
+
+kontrol('işaretli ama çıkmamış sayıyla ilan reddediliyor', await coz(() => {
+  const t = window.__t;
+  // bütün kartı işaretlemiş ama torbadan hiçbir şey çıkmamış
+  const oyuncular = [{ id: 'a', kart: t.k1, isaretli: new Set(t.h1) }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'a', tur: 'tombala', cekilisNo: 0, zaman: 1 }],
+    oyuncular, cikanlar: [], kazananlar: { cinko1: [], cinko2: [], tombala: [] },
+  });
+  return !r.sonuclar.a.gecerli;
+}));
+
+kontrol('1. çinko ilan edilmeden 2. çinko reddediliyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [{ id: 'a', kart: t.k1, isaretli: new Set(t.h1) }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'a', tur: 'cinko2', cekilisNo: 20, zaman: 1 }],
+    oyuncular, cikanlar: t.h1, kazananlar: { cinko1: [], cinko2: [], tombala: [] },
+  });
+  return !r.sonuclar.a.gecerli && r.sonuclar.a.sebep.includes('Önce 1. çinko');
+}));
+
+kontrol('alınmış aşama ikinci kez verilmiyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [{ id: 'b', kart: t.k2, isaretli: new Set(t.s2) }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'b', tur: 'cinko1', cekilisNo: 30, zaman: 1 }],
+    oyuncular, cikanlar: t.h2, kazananlar: { cinko1: ['a'], cinko2: [], tombala: [] },
+  });
+  return !r.sonuclar.b.gecerli && r.sonuclar.b.sebep.includes('alındı')
+      && r.kazananlar.cinko1.join() === 'a';
+}));
+
+kontrol('aynı aşamayı iki kez ilan eden reddediliyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [{ id: 'a', kart: t.k1, isaretli: new Set(t.h1) }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'a', tur: 'cinko1', cekilisNo: 40, zaman: 1 }],
+    oyuncular, cikanlar: t.h1, kazananlar: { cinko1: ['a'], cinko2: [], tombala: [] },
+  });
+  return !r.sonuclar.a.gecerli && r.sonuclar.a.sebep.includes('zaten');
+}));
+
+kontrol('aynı çekilişte gelen ilanlar paylaşılıyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [
+    { id: 'a', kart: t.k1, isaretli: new Set(t.s1) },
+    { id: 'b', kart: t.k2, isaretli: new Set(t.s2) },
+  ];
+  const cikanlar = [...new Set([...t.h1, ...t.h2])];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [
+      { oyuncuId: 'a', tur: 'cinko1', cekilisNo: 50, zaman: 100 },
+      { oyuncuId: 'b', tur: 'cinko1', cekilisNo: 50, zaman: 400 },
+    ],
+    oyuncular, cikanlar, kazananlar: { cinko1: [], cinko2: [], tombala: [] },
+  });
+  return r.kazananlar.cinko1.length === 2
+      && r.sonuclar.a.gecerli && r.sonuclar.b.gecerli;
+}));
+
+kontrol('farklı çekilişte gelen geç ilan reddediliyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [
+    { id: 'a', kart: t.k1, isaretli: new Set(t.s1) },
+    { id: 'b', kart: t.k2, isaretli: new Set(t.s2) },
+  ];
+  const cikanlar = [...new Set([...t.h1, ...t.h2])];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [
+      { oyuncuId: 'b', tur: 'cinko1', cekilisNo: 62, zaman: 10 },   // sonra çekilişte
+      { oyuncuId: 'a', tur: 'cinko1', cekilisNo: 50, zaman: 900 },  // önce çekilişte
+    ],
+    oyuncular, cikanlar, kazananlar: { cinko1: [], cinko2: [], tombala: [] },
+  });
+  return r.kazananlar.cinko1.join() === 'a' && !r.sonuclar.b.gecerli;
+}));
+
+kontrol('tombala ilanı oyunu bitiriyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [{ id: 'a', kart: t.k1, isaretli: new Set(t.h1) }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'a', tur: 'tombala', cekilisNo: 80, zaman: 1 }],
+    oyuncular, cikanlar: t.h1, kazananlar: { cinko1: ['x'], cinko2: ['y'], tombala: [] },
+  });
+  return r.sonuclar.a.gecerli && r.bitti && r.kazananlar.tombala.join() === 'a';
+}));
+
+kontrol('bilinmeyen ilan türü reddediliyor', await coz(() => {
+  const t = window.__t;
+  const oyuncular = [{ id: 'a', kart: t.k1, isaretli: new Set(t.h1) }];
+  const r = Tombala.ilanlariCoz({
+    ilanlar: [{ oyuncuId: 'a', tur: 'hepsi', cekilisNo: 80, zaman: 1 }],
+    oyuncular, cikanlar: t.h1, kazananlar: { cinko1: [], cinko2: [], tombala: [] },
+  });
+  return !r.sonuclar.a.gecerli;
+}));
+
 /* ================= Ana menü ================= */
 console.log('\nAna menü');
 
@@ -146,42 +284,73 @@ await sayfa.locator(`#kart .hucre[data-sayi="${hedef}"]`).click();
 kontrol('çıkan sayı işaretlenebiliyor',
   await sayfa.locator(`#kart .hucre[data-sayi="${hedef}"]`).evaluate((h) => h.classList.contains('isaretli')));
 
-/* ================= Tek başına tam oyun ================= */
+/* ================= Tek başına tam oyun (ilanla) ================= */
 console.log('\nTek başına oyun');
 
 await ayarSec('secim-rakip', '0');
 await ayarSec('secim-isaret', 'otomatik');
 await sayfa.locator('#btn-basla').click();
 kontrol('rakip yokken oyuncu şeridi gizli', await sayfa.locator('#oyuncular').isHidden());
+kontrol('başlangıçta ilan düğmeleri kapalı',
+  (await sayfa.locator('[data-ilan][disabled]').count()) === 3);
 await sayfa.locator('#btn-durdur').click();
 
-let cinko1 = false, cinko2 = false;
-for (let i = 0; i < 90; i++) {
+const hazirMi = (tur) => sayfa.locator(`[data-ilan="${tur}"]`).evaluate((e) => e.classList.contains('hazir'));
+const alindiMi = (tur) => sayfa.locator(`[data-ilan="${tur}"]`).evaluate((e) => e.classList.contains('alindi'));
+
+let cinko1Hazir = false;
+// 90 değil 95: son sayı çekildikten sonra ilan için bir tur daha gerekiyor.
+for (let i = 0; i < 95; i++) {
   if (await sayfa.locator('#perde').isVisible()) break;
-  cinko1 ||= await sayfa.locator('#rozet-cinko1').evaluate((e) => e.classList.contains('alindi'));
-  cinko2 ||= await sayfa.locator('#rozet-cinko2').evaluate((e) => e.classList.contains('alindi'));
+  for (const tur of ['cinko1', 'cinko2', 'tombala']) {
+    if (await hazirMi(tur)) {
+      if (tur === 'cinko1') cinko1Hazir = true;
+      await sayfa.locator(`[data-ilan="${tur}"]`).click();
+      await bekle(450);            // hakem karara bağlasın
+    }
+  }
+  if (await sayfa.locator('#perde').isVisible()) break;
+  if (await sayfa.locator('#btn-cek').isDisabled()) break;
   await sayfa.locator('#btn-cek').click();
 }
-kontrol('1. çinko alındı', cinko1);
-kontrol('2. çinko alındı', cinko2);
+
+kontrol('satır tamamlanınca ilan düğmesi açılıyor', cinko1Hazir);
+kontrol('1. çinko ilanla alındı', await alindiMi('cinko1'));
+kontrol('2. çinko ilanla alındı', await alindiMi('cinko2'));
 kontrol('tombala ile perde açıldı', await sayfa.locator('#perde').isVisible());
 kontrol('başlık tombala senin',
   (await sayfa.locator('#sonuc-baslik').textContent()).includes('Tombala senin'));
 kontrol('15 hücre işaretli', (await sayfa.locator('#kart .hucre.isaretli').count()) === 15);
-kontrol('sonuç listesi üç aşama gösteriyor',
-  (await sayfa.locator('.sonuc-satir').count()) === 3);
-kontrol('rozetlerde kazanan adı yazıyor',
-  (await sayfa.locator('#rozet-cinko1').textContent()).includes('Sen'));
+kontrol('sonuç listesi üç aşama gösteriyor', (await sayfa.locator('.sonuc-satir').count()) === 3);
+kontrol('ilan düğmesinde kazanan adı yazıyor',
+  (await sayfa.locator('[data-ilan="cinko1"]').textContent()).includes('Sen'));
+
+/* ================= İlan etmezsen aşama gelmez ================= */
+console.log('\nİlan etmemek');
+
+await ayarSec('secim-rakip', '0');
+await sayfa.locator('#btn-basla').click();
+await sayfa.locator('#btn-durdur').click();
+for (let i = 0; i < 90; i++) {
+  if (await sayfa.locator('#btn-cek').isDisabled()) break;
+  await sayfa.locator('#btn-cek').click();
+}
+await bekle(3000);   // son tur süresi dolsun
+kontrol('hiç ilan etmeyince aşama kimseye gelmiyor',
+  (await sayfa.$$eval('.sonuc-satir__kim', (e) => e.map((x) => x.textContent.trim())))
+    .every((t) => t === 'kimse alamadı'));
+kontrol('torba bitince perde açılıyor', await sayfa.locator('#perde').isVisible());
+kontrol('torba bitti başlığı', (await sayfa.locator('#sonuc-baslik').textContent()).includes('Torba bitti'));
 
 /* ================= Tekrar oyna ================= */
 await sayfa.locator('#btn-tekrar').click();
 kontrol('tekrar oyna perdeyi kapatıyor', !(await sayfa.locator('#perde').isVisible()));
 kontrol('sayaç sıfırlandı', (await sayfa.locator('#sayi-cikan').textContent()) === '0');
-kontrol('rozetler söndü',
-  !(await sayfa.locator('#rozet-cinko1').evaluate((e) => e.classList.contains('alindi'))));
 kontrol('işaretler temizlendi', (await sayfa.locator('#kart .hucre.isaretli').count()) === 0);
-kontrol('rozet yazısı sıfırlandı',
-  (await sayfa.locator('#rozet-cinko1').textContent()).trim() === '1. Çinko');
+kontrol('ilan düğmeleri sıfırlandı',
+  (await sayfa.locator('[data-ilan="cinko1"]').textContent()).trim() === '1. Çinko');
+kontrol('ilan düğmeleri yeniden kapalı',
+  (await sayfa.locator('[data-ilan][disabled]').count()) === 3);
 
 /* ================= Rakipli oyun ================= */
 console.log('\nRakipler');
@@ -196,21 +365,25 @@ kontrol('şeritte 3 oyuncu var', (await sayfa.locator('.ocip').count()) === 3);
 kontrol('şeritte ben işaretliyim', (await sayfa.locator('.ocip--ben').count()) === 1);
 
 await sayfa.locator('#btn-durdur').click();
-// Hiç işaretlemiyoruz: bütün aşamaları botlar kapmalı.
+// Hiç işaretlemiyor ve ilan etmiyoruz: aşamaları botlar ilan edip kapmalı.
 for (let i = 0; i < 90; i++) {
   if (await sayfa.locator('#perde').isVisible()) break;
   if (await sayfa.locator('#btn-cek').isDisabled()) break;
-  await sayfa.locator('#btn-cek').click();
+  try { await sayfa.locator('#btn-cek').click({ timeout: 2000 }); } catch { break; }
 }
-await bekle(2500);   // botların son işaretleri düşsün
+await bekle(4500);   // son tur süresi + botların ilanları
 
 const kazananlar = await sayfa.$$eval('.sonuc-satir__kim', (e) => e.map((x) => x.textContent.trim()));
-kontrol('1. çinkoyu bir bot aldı',
-  kazananlar[0] && kazananlar[0] !== 'kimse alamadı' && !kazananlar[0].includes('Sen'), kazananlar[0]);
-kontrol('2. çinkoyu bir bot aldı',
-  kazananlar[1] && kazananlar[1] !== 'kimse alamadı' && !kazananlar[1].includes('Sen'), kazananlar[1]);
+const botAldi = (t) => t && t !== 'kimse alamadı' && !t.includes('Sen');
+kontrol('1. çinkoyu bir bot ilan edip aldı', botAldi(kazananlar[0]), kazananlar[0]);
+// Not: burada 90 sayı saniyeler içinde çekiliyor, botlar geriden geliyor ve
+// sıra kendilerine geldiğinde kartları çoktan dolmuş oluyor; o yüzden bazen
+// 2. çinkoyu atlayıp doğrudan tombala ilan ediyorlar. Aşama sırası hakem
+// birim testlerinde kesin olarak sınanıyor.
+kontrol('botlar en az iki aşama kazandı',
+  kazananlar.filter(botAldi).length >= 2, JSON.stringify(kazananlar));
 kontrol('oyun bitti perdesi açıldı', await sayfa.locator('#perde').isVisible());
-kontrol('hiç işaretlemeyince tombala bana gelmedi',
+kontrol('hiç oynamayınca tombala bana gelmedi',
   !(await sayfa.locator('#sonuc-baslik').textContent()).includes('senin'));
 kontrol('bot ilerlemesi şeritte görünüyor', await sayfa.evaluate(() => {
   const barlar = [...document.querySelectorAll('.ocip__bar i')].map((i) => parseFloat(i.style.width));

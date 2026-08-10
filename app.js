@@ -162,10 +162,87 @@
     return kartSayilari(kart).filter((n) => c.has(n) && !i.has(n));
   }
 
+  /* ---------- İlan ve hakem ----------
+     İlanı oyuncu yapar, doğrulamayı hakem yürütür. "Kazandım" iddiasına
+     güvenilmez: hak ediş her zaman oyuncunun işaretleri ve çıkan sayılardan
+     yeniden hesaplanır. Online modda bu fonksiyonlar host tarafında aynen
+     çalışacak, o yüzden ağ ve DOM bilmiyorlar. */
+
+  const ILAN_TURLERI = ['cinko1', 'cinko2', 'tombala'];
+  const ILAN_ADI = { cinko1: '1. Çinko', cinko2: '2. Çinko', tombala: 'Tombala' };
+  const YANLIS_ILAN_CEZASI = 10000;
+
+  /** Oyuncu şu an bu aşamayı gerçekten hak ediyor mu? */
+  function hakEdiyor(oyuncu, tur, cikanlar) {
+    const d = degerlendir(oyuncu.kart, oyuncu.isaretli, cikanlar);
+    if (tur === 'tombala') return d.tamam;
+    if (tur === 'cinko2') return d.tamSatir >= 2;
+    if (tur === 'cinko1') return d.tamSatir >= 1;
+    return false;
+  }
+
+  /** Tek bir ilanın geçerliliği. kazananlar = { cinko1:[], cinko2:[], tombala:[] } */
+  function ilanDogrula({ ilan, oyuncu, cikanlar, kazananlar }) {
+    if (!ILAN_TURLERI.includes(ilan?.tur)) return { gecerli: false, sebep: 'Bilinmeyen ilan' };
+    if (!oyuncu) return { gecerli: false, sebep: 'Oyuncu bulunamadı' };
+    const k = { cinko1: [], cinko2: [], tombala: [], ...(kazananlar || {}) };
+    if (k[ilan.tur].includes(ilan.oyuncuId)) return { gecerli: false, sebep: 'Bunu zaten aldın' };
+    if (k[ilan.tur].length) return { gecerli: false, sebep: ILAN_ADI[ilan.tur] + ' alındı' };
+    if (ilan.tur === 'cinko2' && !k.cinko1.length) {
+      return { gecerli: false, sebep: 'Önce 1. çinko ilan edilmeli' };
+    }
+    if (!hakEdiyor(oyuncu, ilan.tur, cikanlar)) {
+      const eksik = { cinko1: 'Tamamlanmış satır yok', cinko2: 'İki satır tamamlanmadı', tombala: 'Kart tamamlanmadı' };
+      return { gecerli: false, sebep: eksik[ilan.tur] };
+    }
+    return { gecerli: true };
+  }
+
+  /**
+   * Bekleyen ilanları sırayla karara bağlar.
+   * Sıra çekiliş numarasına göre: aynı çekilişte gelen geçerli ilanlar
+   * paylaşımlı sayılır, böylece kimin parmağının daha hızlı olduğu değil
+   * kimin o çekilişte hak ettiği belirleyici olur.
+   */
+  function ilanlariCoz({ ilanlar, oyuncular, cikanlar, kazananlar }) {
+    const k = {
+      cinko1: [...(kazananlar?.cinko1 || [])],
+      cinko2: [...(kazananlar?.cinko2 || [])],
+      tombala: [...(kazananlar?.tombala || [])],
+    };
+    const bul = (id) => oyuncular.find((o) => o.id === id);
+    const sonuclar = {};
+    const sirali = [...(ilanlar || [])].sort(
+      (a, b) => (a.cekilisNo - b.cekilisNo) || (a.zaman - b.zaman),
+    );
+
+    for (const ilan of sirali) {
+      if (sonuclar[ilan.oyuncuId]) continue;
+      const r = ilanDogrula({ ilan, oyuncu: bul(ilan.oyuncuId), cikanlar, kazananlar: k });
+      sonuclar[ilan.oyuncuId] = r;
+      if (!r.gecerli) continue;
+
+      k[ilan.tur].push(ilan.oyuncuId);
+      // Aynı çekilişte aynı türden gelen diğer hak edenler de kazansın.
+      for (const digeri of sirali) {
+        if (digeri === ilan || sonuclar[digeri.oyuncuId]) continue;
+        if (digeri.tur !== ilan.tur || digeri.cekilisNo !== ilan.cekilisNo) continue;
+        const o = bul(digeri.oyuncuId);
+        if (o && hakEdiyor(o, digeri.tur, cikanlar)) {
+          sonuclar[digeri.oyuncuId] = { gecerli: true };
+          k[digeri.tur].push(digeri.oyuncuId);
+        }
+      }
+    }
+    return { sonuclar, kazananlar: k, bitti: k.tombala.length > 0 };
+  }
+
   const Cekirdek = {
     SATIR, SUTUN, SATIR_BASI, KART_SAYI, EN_BUYUK,
+    ILAN_TURLERI, ILAN_ADI, YANLIS_ILAN_CEZASI,
     karistir, sutunAraligi, kartUret, kartDogrula, torbaKur,
     satirSayilari, kartSayilari, degerlendir, kacanlar,
+    hakEdiyor, ilanDogrula, ilanlariCoz,
   };
   window.Tombala = Cekirdek;   // testler ve ağ katmanı için
 
@@ -178,8 +255,8 @@
   const HUCRE_ORAN = 1.12;
   const HUCRE_EN_BUYUK = 58;
 
-  const ASAMALAR = ['cinko1', 'cinko2', 'tombala'];
-  const ASAMA_ADI = { cinko1: '1. Çinko', cinko2: '2. Çinko', tombala: 'Tombala' };
+  const ASAMALAR = ILAN_TURLERI;
+  const ASAMA_ADI = ILAN_ADI;
 
   const BOT_ADLARI = ['Nihal', 'Ferit', 'Sevim', 'Cemre'];
   const BOT_YUZLERI = ['🦊', '🐢', '🦉', '🐝'];
@@ -272,6 +349,12 @@
     cikanlar: [],
     kazananlar: { cinko1: [], cinko2: [], tombala: [] },
     tamSatirlar: [false, false, false],
+    bekleyenIlanlar: [],   // hakemin karara bağlamadığı ilanlar
+    hakemZaman: null,
+    torbaBitti: false,     // son sayı çıktı, ek süre işliyor
+    bitisZaman: null,
+    cezaBitis: 0,          // yanlış ilan cezası bu ana kadar sürer
+    cezaSayac: null,
     zaman: null,
     botZamanlari: new Set(),
     duraklat: false,
@@ -380,6 +463,14 @@
   $('#btn-anamenu').onclick = () => { perdeKapat(); oyunuBirak(); ekranGoster('ekran-menu'); };
   $('#btn-tekrar').onclick = () => { perdeKapat(); oyunuBaslat(); };
   $('#btn-cek').onclick = () => { if (!O.bitti) sayiCek(); };
+  document.querySelectorAll('[data-ilan]').forEach((b) => {
+    b.onclick = () => {
+      const tur = b.dataset.ilan;
+      if (!ilanEdilebilir(tur)) return;
+      sfx.dokun();
+      ilanEt(BEN, tur);
+    };
+  });
   $('#btn-durdur').onclick = duraklatDegistir;
 
   /* ===================== Oyun kurulumu ===================== */
@@ -413,6 +504,9 @@
     O.cikanlar = [];
     O.kazananlar = { cinko1: [], cinko2: [], tombala: [] };
     O.tamSatirlar = [false, false, false];
+    O.bekleyenIlanlar = [];
+    O.cezaBitis = 0;
+    O.torbaBitti = false;
     O.duraklat = false;
     O.bitti = false;
 
@@ -430,6 +524,12 @@
   function oyunuBirak() {
     zamanDurdur();
     botZamanlariniSil();
+    clearTimeout(O.hakemZaman);
+    clearTimeout(O.bitisZaman);
+    clearInterval(O.cezaSayac);
+    O.hakemZaman = null;
+    O.bitisZaman = null;
+    O.cezaSayac = null;
   }
 
   /* ===================== Çekiliş ===================== */
@@ -476,11 +576,12 @@
 
     if (ayarlar.isaret === 'otomatik') isaretle(ben(), n, false);
     botlariCalistir(n);
+    tamSatirlariTazele();
 
+    tamSatirlariTazele();
     ekraniTazele();
-    asamalariDegerlendir();
     if (O.bitti) return;                                   // tombala oldu
-    if (!O.torba.length) return oyunuBitir('torba');        // son sayı da çıktı
+    if (!O.torba.length) return sonTuruBaslat();            // son sayı da çıktı
     zamanKur();
   }
 
@@ -495,8 +596,8 @@
       sonra(() => {
         if (O.bitti) return;
         isaretle(o, n, false);
+        botIlanlari(o);
         ekraniTazele();
-        asamalariDegerlendir();
       }, gecikme);
     }
   }
@@ -529,47 +630,137 @@
     }
 
     isaretle(b, n);
+    tamSatirlariTazele();
     ekraniTazele();
-    asamalariDegerlendir();
   });
 
-  /* ===================== Aşamalar ===================== */
+  /* ===================== Son tur ===================== */
+  /* Torba bitince oyunu anında kapatmıyoruz: son çıkan sayı birinin kartını
+     tamamlamış olabilir. Elle işaretlemede oyuncunun o sayıya dokunup ilan
+     etmesi, botların da son işaretlerini yapması için kısa bir süre tanınır. */
 
-  /** Bir aşamayı o an hak eden oyuncular. */
-  function hakEdenler(asama) {
-    return O.oyuncular.filter((o) => {
-      const d = Cekirdek.degerlendir(o.kart, o.isaretli, O.cikanlar);
-      if (asama === 'tombala') return d.tamam;
-      if (asama === 'cinko2') return d.tamSatir >= 2;
-      return d.tamSatir >= 1;
-    }).map((o) => o.id);
+  function sonTuruBaslat() {
+    O.torbaBitti = true;
+    zamanDurdur();
+    ekraniTazele();
+    clearTimeout(O.bitisZaman);
+    O.bitisZaman = setTimeout(bitisiDene, Math.max(1800, ayarlar.hiz * 0.9));
   }
 
-  function asamalariDegerlendir() {
-    const b = ben();
-    O.tamSatirlar = Cekirdek.degerlendir(b.kart, b.isaretli, O.cikanlar).satirlar;
+  function bitisiDene() {
+    if (O.bitti) return;
+    // Hakem hâlâ karar veriyorsa ya da sırada ilan varsa bekle.
+    if (O.bekleyenIlanlar.length || O.hakemZaman) {
+      O.bitisZaman = setTimeout(bitisiDene, 400);
+      return;
+    }
+    oyunuBitir('torba');
+  }
 
-    for (const asama of ASAMALAR) {
-      if (O.kazananlar[asama].length) continue;
-      // 2. çinko ancak 1. çinko alındıktan sonra verilir.
-      if (asama === 'cinko2' && !O.kazananlar.cinko1.length) continue;
-      const hak = hakEdenler(asama);
-      if (!hak.length) continue;
+  /* ===================== İlan ve hakem ===================== */
+  /* İlanı oyuncu yapar; hakem kısa bir gecikmeyle karara bağlar. Gecikme
+     bilinçli: aynı çekilişte gelen ilanlar aynı partide değerlendirilsin ve
+     paylaşılabilsin. Online modda bu gecikmenin yerini ağ gecikmesi alacak. */
 
-      O.kazananlar[asama] = hak;
-      const bendeMi = hak.includes(BEN);
-      const kim = hak.map(adiyla).join(', ');
+  const HAKEM_GECIKME = 300;
 
-      if (asama === 'tombala') {
-        rozetleriTazele();
-        return oyunuBitir('tombala');
-      }
-      bildir(`${ASAMA_ADI[asama]}: ${kim}`, false);
-      if (bendeMi) { sfx.cinko(); titre(asama === 'cinko2' ? [30, 40, 30] : 30); }
+  function ilanEt(oyuncuId, tur) {
+    if (O.bitti) return;
+    if (O.bekleyenIlanlar.some((i) => i.oyuncuId === oyuncuId)) return;  // sırada ilanı var
+    O.bekleyenIlanlar.push({ oyuncuId, tur, cekilisNo: O.cikanlar.length, zaman: Date.now() });
+    if (oyuncuId === BEN) bildir(ASAMA_ADI[tur] + ' ilan edildi');
+    ilanlariTazele();
+    if (!O.hakemZaman) O.hakemZaman = setTimeout(hakemCalistir, HAKEM_GECIKME);
+  }
+
+  function hakemCalistir() {
+    O.hakemZaman = null;
+    if (O.bitti || !O.bekleyenIlanlar.length) return;
+
+    const { sonuclar, kazananlar, bitti } = Cekirdek.ilanlariCoz({
+      ilanlar: O.bekleyenIlanlar,
+      oyuncular: O.oyuncular,
+      cikanlar: O.cikanlar,
+      kazananlar: O.kazananlar,
+    });
+    O.bekleyenIlanlar = [];
+    O.kazananlar = kazananlar;
+
+    // Kendi ilanımın sonucu
+    const benimki = sonuclar[BEN];
+    if (benimki && !benimki.gecerli) {
+      O.cezaBitis = Date.now() + Cekirdek.YANLIS_ILAN_CEZASI;
+      bildir(benimki.sebep || 'Yanlış ilan', true);
+      sfx.hata();
+      titre([15, 40, 15]);
+      cezaSayaciBaslat();
+    }
+
+    // Yeni kazanılan aşamaları duyur
+    for (const tur of ASAMALAR) {
+      const kazanan = O.kazananlar[tur];
+      if (!kazanan.length) continue;
+      if (!kazanan.some((id) => sonuclar[id]?.gecerli)) continue;   // bu turda kazanılmadı
+      if (tur === 'tombala') break;
+      const bendeMi = kazanan.includes(BEN);
+      bildir(`${ASAMA_ADI[tur]}: ${kazanan.map(adiyla).join(', ')}`);
+      if (bendeMi) { sfx.cinko(); titre(tur === 'cinko2' ? [30, 40, 30] : 30); }
       else { sfx.kaptirdi(); titre(10); }
     }
-    rozetleriTazele();
-    oyuncularCiz();
+
+    ekraniTazele();
+    if (bitti) return oyunuBitir('tombala');
+    if (O.torbaBitti) {
+      clearTimeout(O.bitisZaman);
+      O.bitisZaman = setTimeout(bitisiDene, 600);
+    }
+
+    // Karar sonrası durum değişti: botlar yeni açılan aşamayı değerlendirsin.
+    // Buna yalnızca işaretleme anında bakılırsa, işaretleyecek sayısı kalmayan
+    // bot hak ettiği aşamayı hiç ilan edemiyor.
+    for (const o of O.oyuncular) {
+      if (!o.bot) continue;
+      sonra(() => { if (!O.bitti) { botIlanlari(o); ekraniTazele(); } },
+        ayarlar.hiz * o.tepki * 0.5);
+    }
+  }
+
+  function cezaSayaciBaslat() {
+    clearInterval(O.cezaSayac);
+    O.cezaSayac = setInterval(() => {
+      if (Date.now() >= O.cezaBitis || O.bitti) {
+        clearInterval(O.cezaSayac);
+        O.cezaSayac = null;
+      }
+      ekraniTazele();
+    }, 500);
+  }
+
+  const cezali = () => O.cezaBitis > Date.now();
+
+  /** Ben bu aşamayı şu an ilan edebilir miyim? */
+  function ilanEdilebilir(tur) {
+    if (O.bitti || cezali()) return false;
+    if (O.kazananlar[tur].length) return false;
+    if (tur === 'cinko2' && !O.kazananlar.cinko1.length) return false;
+    if (O.bekleyenIlanlar.some((i) => i.oyuncuId === BEN)) return false;
+    return Cekirdek.hakEdiyor(ben(), tur, O.cikanlar);
+  }
+
+  /** Botlar hak ettikleri en yüksek aşamayı ilan eder; yanlış ilan etmezler. */
+  function botIlanlari(o) {
+    if (O.bitti || O.bekleyenIlanlar.some((i) => i.oyuncuId === o.id)) return;
+    for (const tur of ['tombala', 'cinko2', 'cinko1']) {
+      if (O.kazananlar[tur].length) continue;
+      if (tur === 'cinko2' && !O.kazananlar.cinko1.length) continue;
+      if (O.kazananlar[tur].includes(o.id)) continue;
+      if (Cekirdek.hakEdiyor(o, tur, O.cikanlar)) { ilanEt(o.id, tur); return; }
+    }
+  }
+
+  function tamSatirlariTazele() {
+    const b = ben();
+    O.tamSatirlar = Cekirdek.degerlendir(b.kart, b.isaretli, O.cikanlar).satirlar;
   }
 
   function oyunuBitir(sebep) {
@@ -650,18 +841,23 @@
     });
   }
 
-  function rozetleriTazele() {
-    for (const a of ASAMALAR) {
-      const el = $('#rozet-' + a);
-      const kazanan = O.kazananlar[a];
+  function ilanlariTazele() {
+    const bekleyenim = O.bekleyenIlanlar.some((i) => i.oyuncuId === BEN);
+    document.querySelectorAll('[data-ilan]').forEach((b) => {
+      const tur = b.dataset.ilan;
+      const kazanan = O.kazananlar[tur];
       const alindi = kazanan.length > 0;
-      el.classList.toggle('alindi', alindi);
-      el.classList.toggle('bende', alindi && kazanan.includes(BEN));
-      el.classList.toggle('tombala', a === 'tombala' && alindi);
-      el.textContent = alindi
-        ? `${ASAMA_ADI[a]} · ${kazanan.map(adiyla).join(', ')}`
-        : ASAMA_ADI[a];
-    }
+      const acik = ilanEdilebilir(tur);
+
+      b.disabled = !acik;
+      b.classList.toggle('hazir', acik);
+      b.classList.toggle('alindi', alindi);
+      b.classList.toggle('bende', alindi && kazanan.includes(BEN));
+      b.classList.toggle('bekliyor', bekleyenim && !alindi);
+      b.textContent = alindi
+        ? `${ASAMA_ADI[tur]} · ${kazanan.map(adiyla).join(', ')}`
+        : ASAMA_ADI[tur];
+    });
   }
 
   function oyuncularCiz() {
@@ -700,11 +896,13 @@
     $('#sayi-kalan').textContent = O.torba.length;
     sonlariCiz();
     hucreleriTazele();
-    rozetleriTazele();
+    ilanlariTazele();
     oyuncularCiz();
 
     let ipucu = '';
     if (O.bitti) ipucu = '';
+    else if (cezali()) ipucu = `Yanlış ilan — ${Math.ceil((O.cezaBitis - Date.now()) / 1000)} sn bekle`;
+    else if (O.torbaBitti) ipucu = 'Torba bitti — son ilanlar';
     else if (O.duraklat) ipucu = 'Duraklatıldı';
     else if (ayarlar.isaret === 'elle') ipucu = 'Çıkan sayılara dokunarak işaretle';
     else ipucu = 'Sayılar otomatik işaretleniyor';
