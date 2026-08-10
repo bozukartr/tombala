@@ -70,8 +70,9 @@
       <div class="panel__bas"><h2 class="baslik">Nasıl oynanır</h2></div>
       <p class="yazi">
         Kartında 3 satır ve 15 sayı var. Torbadan 1–90 arası sayılar teker teker
-        çıkar. Çıkan sayı kartındaysa üstüne dokunup işaretle. Rakipler de kendi
-        kartlarını işaretliyor; aşamayı önce tamamlayan kapar.
+        çıkar. Çıkan sayı kartındaysa üstüne dokunup işaretle. Hak ettiğinde
+        aşağıdaki düğmeyle <b>ilan et</b> — ilan etmezsen aşama senin sayılmaz,
+        rakipler kapar. Boşa ilan edersen 10 saniye ilan yapamazsın.
       </p>
       <ul class="liste">
         <li><b>1. Çinko</b> — bir satırın 5 sayısını da işaretle</li>
@@ -110,20 +111,21 @@
     <div class="sonlar" id="sonlar" aria-label="Son çıkan sayılar"></div>
   </section>
 
-  <div class="rozetler">
-    <span class="rozet" id="rozet-cinko1">1. Çinko</span>
-    <span class="rozet" id="rozet-cinko2">2. Çinko</span>
-    <span class="rozet" id="rozet-tombala">Tombala</span>
-  </div>
-
   <main class="tahta">
     <div class="kart" id="kart"></div>
     <p class="ipucu" id="ipucu"></p>
   </main>
 
   <footer class="alt">
-    <button class="dugme dugme--kucuk" id="btn-durdur">Duraklat</button>
-    <button class="dugme dugme--kucuk dugme--vurgu" id="btn-cek">Sayı çek</button>
+    <div class="ilanlar">
+      <button class="dugme dugme--ilan" data-ilan="cinko1" disabled>1. Çinko</button>
+      <button class="dugme dugme--ilan" data-ilan="cinko2" disabled>2. Çinko</button>
+      <button class="dugme dugme--ilan dugme--tombala" data-ilan="tombala" disabled>Tombala</button>
+    </div>
+    <div class="sur">
+      <button class="dugme dugme--ince" id="btn-durdur">Duraklat</button>
+      <button class="dugme dugme--ince" id="btn-cek">Sayı çek</button>
+    </div>
   </footer>
 </section>
 
