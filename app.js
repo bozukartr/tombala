@@ -1,89 +1,20 @@
 /* Tombala — tek dosya oyun mantığı.
-   Modül kullanmıyoruz; dosya file:// üzerinden de açılabilsin diye düz script. */
+   Modül kullanmıyoruz; dosya file:// üzerinden de açılabilsin diye düz script.
+
+   Yapı: önce DOM bilmeyen çekirdek, sonra arayüz. Çekirdek `window.Tombala`
+   olarak dışa veriliyor; testler ve ileride gelecek ağ katmanı onu kullanacak. */
 (() => {
   'use strict';
 
-  /* ===================== Sabitler ===================== */
+  /* ==================================================================
+     ÇEKİRDEK — saf mantık, DOM ve zamanlayıcı bilmez
+     ================================================================== */
+
   const SATIR = 3;
   const SUTUN = 9;
   const SATIR_BASI = 5;   // her satırda kaç sayı
   const KART_SAYI = 15;   // karttaki toplam sayı
   const EN_BUYUK = 90;
-
-  const KART_BOSLUK = 4;  // hücreler arası
-  const KART_KENAR = 8;   // kartın iç payı
-  const HUCRE_ORAN = 1.12;
-  const HUCRE_EN_BUYUK = 58;
-
-  const $ = (s) => document.querySelector(s);
-
-  /* ===================== Dokunma davranışı ===================== */
-  /* Çift dokunuşla yakınlaştırmayı CSS'teki `touch-action: manipulation`
-     kapatıyor. Aşağıdakiler eski iOS sürümleri ve çimdik jesti için. */
-
-  ['gesturestart', 'gesturechange', 'gestureend'].forEach((tur) => {
-    document.addEventListener(tur, (e) => e.preventDefault(), { passive: false });
-  });
-  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
-
-  /* ===================== Ses ve titreşim ===================== */
-
-  let sesAcik = localStorage.getItem('tombala.ses') !== 'kapali';
-  let ac = null;   // AudioContext
-
-  function sesiAc() {
-    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) ac = new AC();
-  }
-  // Mobilde ses ancak bir dokunuştan sonra açılabilir.
-  document.addEventListener('pointerdown', sesiAc, { once: true });
-
-  function ton({ frek = 440, sure = .12, tip = 'sine', ses = .1, kaydir = 0, gecikme = 0 }) {
-    if (!sesAcik || !ac) return;
-    const t0 = ac.currentTime + gecikme;
-    const osc = ac.createOscillator();
-    const g = ac.createGain();
-    osc.type = tip;
-    osc.frequency.setValueAtTime(frek, t0);
-    if (kaydir) osc.frequency.exponentialRampToValueAtTime(Math.max(40, frek + kaydir), t0 + sure);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(ses, t0 + .012);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + sure);
-    osc.connect(g).connect(ac.destination);
-    osc.start(t0);
-    osc.stop(t0 + sure + .02);
-  }
-
-  function cizirti({ sure = .07, ses = .06 }) {
-    if (!sesAcik || !ac) return;
-    const n = Math.floor(ac.sampleRate * sure);
-    const tampon = ac.createBuffer(1, n, ac.sampleRate);
-    const d = tampon.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
-    const kaynak = ac.createBufferSource();
-    const g = ac.createGain();
-    g.gain.value = ses;
-    kaynak.buffer = tampon;
-    kaynak.connect(g).connect(ac.destination);
-    kaynak.start(ac.currentTime);
-  }
-
-  const sfx = {
-    dokun:   () => ton({ frek: 620, sure: .05, tip: 'triangle', ses: .05 }),
-    cek:     () => { cizirti({}); ton({ frek: 180, sure: .16, ses: .12, kaydir: -80 }); },
-    isaret:  () => { ton({ frek: 880, sure: .06, tip: 'square', ses: .045 }); cizirti({ sure: .04, ses: .035 }); },
-    cinko:   () => [523, 659, 784, 1047].forEach((f, i) => ton({ frek: f, sure: .26, ses: .095, gecikme: i * .08 })),
-    tombala: () => [392, 523, 659, 784, 1047, 1319].forEach((f, i) => ton({ frek: f, sure: .45, tip: 'triangle', ses: .1, gecikme: i * .1 })),
-    hata:    () => ton({ frek: 160, sure: .22, tip: 'sawtooth', ses: .08, kaydir: -60 }),
-  };
-
-  function titre(desen) {
-    if (!sesAcik || !navigator.vibrate) return;
-    try { navigator.vibrate(desen); } catch { /* desteklenmiyor */ }
-  }
-
-  /* ===================== Kart üretimi ===================== */
 
   const rastgele = (n) => Math.floor(Math.random() * n);
 
@@ -165,30 +96,191 @@
     return kart;
   }
 
+  /** Kartın tombala kurallarına uygunluğunu sınar; hata metinleri döndürür. */
+  function kartDogrula(kart) {
+    const h = [];
+    if (!Array.isArray(kart) || kart.length !== SATIR * SUTUN) return ['Hücre sayısı 27 değil'];
+    const sayilar = kart.filter((v) => v !== null);
+    if (sayilar.length !== KART_SAYI) h.push(`Kartta ${sayilar.length} sayı var`);
+    if (new Set(sayilar).size !== sayilar.length) h.push('Tekrar eden sayı var');
+    for (let r = 0; r < SATIR; r++) {
+      const n = satirSayilari(kart, r).length;
+      if (n !== SATIR_BASI) h.push(`${r + 1}. satırda ${n} sayı var`);
+    }
+    for (let c = 0; c < SUTUN; c++) {
+      const [alt, ust] = sutunAraligi(c);
+      const sut = [];
+      for (let r = 0; r < SATIR; r++) {
+        const v = kart[r * SUTUN + c];
+        if (v !== null) {
+          if (v < alt || v > ust) h.push(`${v} sayısı ${c + 1}. sütunda olamaz`);
+          sut.push(v);
+        }
+      }
+      if (sut.length < 1) h.push(`${c + 1}. sütun boş`);
+      if (sut.length > 3) h.push(`${c + 1}. sütunda 3'ten fazla sayı var`);
+      for (let i = 1; i < sut.length; i++) {
+        if (sut[i] <= sut[i - 1]) h.push(`${c + 1}. sütun artan sırada değil`);
+      }
+    }
+    return h;
+  }
+
   const satirSayilari = (kart, r) =>
     kart.slice(r * SUTUN, r * SUTUN + SUTUN).filter((v) => v !== null);
 
   const kartSayilari = (kart) => kart.filter((v) => v !== null);
 
+  /** Karışık 1-90 torbası. */
+  const torbaKur = () => karistir(Array.from({ length: EN_BUYUK }, (_, i) => i + 1));
+
+  const kumeye = (x) => (x instanceof Set ? x : new Set(x || []));
+
+  /**
+   * Bir kartın durumu. Geçerli işaret = oyuncunun işaretledikleri ∩ çıkanlar,
+   * yani çıkmamış sayıyı işaretlemek bir işe yaramaz.
+   */
+  function degerlendir(kart, isaretli, cikanlar) {
+    const c = kumeye(cikanlar);
+    const i = kumeye(isaretli);
+    const gecerli = (n) => i.has(n) && c.has(n);
+    const satirlar = [];
+    for (let r = 0; r < SATIR; r++) satirlar.push(satirSayilari(kart, r).every(gecerli));
+    const hepsi = kartSayilari(kart);
+    return {
+      satirlar,
+      tamSatir: satirlar.filter(Boolean).length,
+      isaretli: hepsi.filter(gecerli).length,
+      tamam: hepsi.every(gecerli),
+    };
+  }
+
+  /** Kartta olan, çıkmış ama henüz işaretlenmemiş sayılar. */
+  function kacanlar(kart, isaretli, cikanlar) {
+    const c = kumeye(cikanlar);
+    const i = kumeye(isaretli);
+    return kartSayilari(kart).filter((n) => c.has(n) && !i.has(n));
+  }
+
+  const Cekirdek = {
+    SATIR, SUTUN, SATIR_BASI, KART_SAYI, EN_BUYUK,
+    karistir, sutunAraligi, kartUret, kartDogrula, torbaKur,
+    satirSayilari, kartSayilari, degerlendir, kacanlar,
+  };
+  window.Tombala = Cekirdek;   // testler ve ağ katmanı için
+
+  /* ==================================================================
+     ARAYÜZ
+     ================================================================== */
+
+  const KART_BOSLUK = 4;   // hücreler arası
+  const KART_KENAR = 8;    // kartın iç payı
+  const HUCRE_ORAN = 1.12;
+  const HUCRE_EN_BUYUK = 58;
+
+  const ASAMALAR = ['cinko1', 'cinko2', 'tombala'];
+  const ASAMA_ADI = { cinko1: '1. Çinko', cinko2: '2. Çinko', tombala: 'Tombala' };
+
+  const BOT_ADLARI = ['Nihal', 'Ferit', 'Sevim', 'Cemre'];
+  const BOT_YUZLERI = ['🦊', '🐢', '🦉', '🐝'];
+  const BOT_RENKLERI = ['#f0517a', '#34d39a', '#6bc5f5', '#c084fc'];
+
+  const $ = (s) => document.querySelector(s);
+  const kacis = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /* ===================== Dokunma davranışı ===================== */
+  /* Çift dokunuşla yakınlaştırmayı CSS'teki `touch-action: manipulation`
+     kapatıyor. Aşağıdakiler eski iOS sürümleri ve çimdik jesti için. */
+
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((tur) => {
+    document.addEventListener(tur, (e) => e.preventDefault(), { passive: false });
+  });
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+
+  /* ===================== Ses ve titreşim ===================== */
+
+  let sesAcik = localStorage.getItem('tombala.ses') !== 'kapali';
+  let ac = null;   // AudioContext
+
+  function sesiAc() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) ac = new AC();
+  }
+  document.addEventListener('pointerdown', sesiAc, { once: true });
+
+  function ton({ frek = 440, sure = .12, tip = 'sine', ses = .1, kaydir = 0, gecikme = 0 }) {
+    if (!sesAcik || !ac) return;
+    const t0 = ac.currentTime + gecikme;
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = tip;
+    osc.frequency.setValueAtTime(frek, t0);
+    if (kaydir) osc.frequency.exponentialRampToValueAtTime(Math.max(40, frek + kaydir), t0 + sure);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(ses, t0 + .012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + sure);
+    osc.connect(g).connect(ac.destination);
+    osc.start(t0);
+    osc.stop(t0 + sure + .02);
+  }
+
+  function cizirti({ sure = .07, ses = .06 }) {
+    if (!sesAcik || !ac) return;
+    const n = Math.floor(ac.sampleRate * sure);
+    const tampon = ac.createBuffer(1, n, ac.sampleRate);
+    const d = tampon.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+    const kaynak = ac.createBufferSource();
+    const g = ac.createGain();
+    g.gain.value = ses;
+    kaynak.buffer = tampon;
+    kaynak.connect(g).connect(ac.destination);
+    kaynak.start(ac.currentTime);
+  }
+
+  const sfx = {
+    dokun:   () => ton({ frek: 620, sure: .05, tip: 'triangle', ses: .05 }),
+    cek:     () => { cizirti({}); ton({ frek: 180, sure: .16, ses: .12, kaydir: -80 }); },
+    isaret:  () => { ton({ frek: 880, sure: .06, tip: 'square', ses: .045 }); cizirti({ sure: .04, ses: .035 }); },
+    cinko:   () => [523, 659, 784, 1047].forEach((f, i) => ton({ frek: f, sure: .26, ses: .095, gecikme: i * .08 })),
+    kaptirdi: () => [392, 330].forEach((f, i) => ton({ frek: f, sure: .2, tip: 'triangle', ses: .07, gecikme: i * .1 })),
+    tombala: () => [392, 523, 659, 784, 1047, 1319].forEach((f, i) => ton({ frek: f, sure: .45, tip: 'triangle', ses: .1, gecikme: i * .1 })),
+    hata:    () => ton({ frek: 160, sure: .22, tip: 'sawtooth', ses: .08, kaydir: -60 }),
+  };
+
+  function titre(desen) {
+    if (!sesAcik || !navigator.vibrate) return;
+    try { navigator.vibrate(desen); } catch { /* desteklenmiyor */ }
+  }
+
   /* ===================== Durum ===================== */
 
   const ayarlar = {
+    rakip: Number(localStorage.getItem('tombala.rakip') ?? 2),
     hiz: Number(localStorage.getItem('tombala.hiz')) || 3500,
     isaret: localStorage.getItem('tombala.isaret') || 'elle',
     ses: sesAcik ? 'acik' : 'kapali',
   };
 
+  const BEN = 'ben';
+
   const O = {
-    kart: null,
-    isaretli: new Set(),
-    torba: [],       // henüz çıkmamış sayılar
-    cikanlar: [],    // çıkış sırasıyla
-    asama: 0,        // 0 yok, 1 çinko1, 2 çinko2, 3 tombala
+    oyuncular: [],   // { id, ad, avatar, renk, bot, tepki, kart, isaretli:Set }
+    torba: [],
+    cikanlar: [],
+    kazananlar: { cinko1: [], cinko2: [], tombala: [] },
     tamSatirlar: [false, false, false],
     zaman: null,
+    botZamanlari: new Set(),
     duraklat: false,
     bitti: false,
   };
+
+  const ben = () => O.oyuncular.find((o) => o.id === BEN);
+  const oyuncu = (id) => O.oyuncular.find((o) => o.id === id);
+  const adiyla = (id) => (id === BEN ? 'Sen' : (oyuncu(id)?.ad || '?'));
 
   /* ===================== Yardımcılar ===================== */
 
@@ -206,6 +298,16 @@
     el.classList.add('acik');
     clearTimeout(bildirimZaman);
     bildirimZaman = setTimeout(() => el.classList.remove('acik'), 2400);
+  }
+
+  function sonra(fn, ms) {
+    const t = setTimeout(() => { O.botZamanlari.delete(t); fn(); }, ms);
+    O.botZamanlari.add(t);
+    return t;
+  }
+  function botZamanlariniSil() {
+    O.botZamanlari.forEach(clearTimeout);
+    O.botZamanlari.clear();
   }
 
   /* ===================== Kart ölçüsü ===================== */
@@ -243,7 +345,7 @@
       if (!b) return;
       [...kutu.children].forEach((x) => x.classList.toggle('secili', x === b));
       const deger = b.dataset.deger;
-      ayarlar[anahtar] = anahtar === 'hiz' ? Number(deger) : deger;
+      ayarlar[anahtar] = (anahtar === 'hiz' || anahtar === 'rakip') ? Number(deger) : deger;
       localStorage.setItem('tombala.' + anahtar, deger);
       uygula(deger);
       sfx.dokun();
@@ -253,6 +355,7 @@
     });
   }
 
+  secimKur('#secim-rakip', 'rakip', () => {});
   secimKur('#secim-hiz', 'hiz', () => {});
   secimKur('#secim-isaret', 'isaret', () => {});
   secimKur('#secim-ses', 'ses', (v) => sesiAyarla(v === 'acik', true));
@@ -273,21 +376,42 @@
   $('#btn-ses').onclick = () => { sesiAyarla(!sesAcik, true); if (sesAcik) sfx.dokun(); };
 
   $('#btn-basla').onclick = oyunuBaslat;
-  $('#btn-menu').onclick = () => { zamanDurdur(); ekranGoster('ekran-menu'); sfx.dokun(); };
-  $('#btn-anamenu').onclick = () => { perdeKapat(); zamanDurdur(); ekranGoster('ekran-menu'); };
+  $('#btn-menu').onclick = () => { oyunuBirak(); ekranGoster('ekran-menu'); sfx.dokun(); };
+  $('#btn-anamenu').onclick = () => { perdeKapat(); oyunuBirak(); ekranGoster('ekran-menu'); };
   $('#btn-tekrar').onclick = () => { perdeKapat(); oyunuBaslat(); };
   $('#btn-cek').onclick = () => { if (!O.bitti) sayiCek(); };
   $('#btn-durdur').onclick = duraklatDegistir;
 
   /* ===================== Oyun kurulumu ===================== */
 
+  function oyuncuKur() {
+    const liste = [{
+      id: BEN, ad: 'Sen', avatar: '🎯', renk: '#ffb43d', bot: false,
+      kart: kartUret(), isaretli: new Set(),
+    }];
+    const kac = Math.max(0, Math.min(ayarlar.rakip, BOT_ADLARI.length));
+    for (let i = 0; i < kac; i++) {
+      liste.push({
+        id: 'bot' + i,
+        ad: BOT_ADLARI[i],
+        avatar: BOT_YUZLERI[i],
+        renk: BOT_RENKLERI[i],
+        bot: true,
+        // Tepki süresi çekiliş aralığına oranlı; her botun kendi temposu var.
+        tepki: 0.16 + i * 0.07 + Math.random() * 0.12,
+        kart: kartUret(),
+        isaretli: new Set(),
+      });
+    }
+    return liste;
+  }
+
   function oyunuBaslat() {
-    zamanDurdur();
-    O.kart = kartUret();
-    O.isaretli = new Set();
-    O.torba = karistir(Array.from({ length: EN_BUYUK }, (_, i) => i + 1));
+    oyunuBirak();
+    O.oyuncular = oyuncuKur();
+    O.torba = torbaKur();
     O.cikanlar = [];
-    O.asama = 0;
+    O.kazananlar = { cinko1: [], cinko2: [], tombala: [] };
     O.tamSatirlar = [false, false, false];
     O.duraklat = false;
     O.bitti = false;
@@ -301,6 +425,11 @@
     $('#btn-durdur').textContent = 'Duraklat';
     sfx.dokun();
     zamanKur();
+  }
+
+  function oyunuBirak() {
+    zamanDurdur();
+    botZamanlariniSil();
   }
 
   /* ===================== Çekiliş ===================== */
@@ -345,26 +474,49 @@
     sfx.cek();
     titre(8);
 
-    if (ayarlar.isaret === 'otomatik' && O.kart.includes(n)) {
-      O.isaretli.add(n);
-      sfx.isaret();
-    }
+    if (ayarlar.isaret === 'otomatik') isaretle(ben(), n, false);
+    botlariCalistir(n);
 
     ekraniTazele();
-    asamaKontrol();
+    asamalariDegerlendir();
     if (O.bitti) return;                                   // tombala oldu
     if (!O.torba.length) return oyunuBitir('torba');        // son sayı da çıktı
     zamanKur();
   }
 
+  /* ===================== Botlar ===================== */
+  /* Botlar çıkan sayıyı kendi temposuyla işaretler; aralığın yarısını
+     geçmezler, yani bir sonraki çekilişe sarkmazlar. */
+
+  function botlariCalistir(n) {
+    for (const o of O.oyuncular) {
+      if (!o.bot || !o.kart.includes(n)) continue;
+      const gecikme = Math.min(ayarlar.hiz * 0.55, ayarlar.hiz * o.tepki + rastgele(120));
+      sonra(() => {
+        if (O.bitti) return;
+        isaretle(o, n, false);
+        ekraniTazele();
+        asamalariDegerlendir();
+      }, gecikme);
+    }
+  }
+
   /* ===================== İşaretleme ===================== */
+
+  function isaretle(o, n, sesVer = true) {
+    if (!o || O.bitti) return false;
+    if (o.isaretli.has(n) || !O.cikanlar.includes(n) || !o.kart.includes(n)) return false;
+    o.isaretli.add(n);
+    if (sesVer) { sfx.isaret(); titre(12); }
+    return true;
+  }
 
   $('#kart').addEventListener('click', (e) => {
     const hucre = e.target.closest('.hucre');
     if (!hucre || !hucre.dataset.sayi || O.bitti) return;
     const n = Number(hucre.dataset.sayi);
-
-    if (O.isaretli.has(n)) return;
+    const b = ben();
+    if (b.isaretli.has(n)) return;
 
     if (!O.cikanlar.includes(n)) {
       bildir('Bu sayı henüz çıkmadı', true);
@@ -376,61 +528,80 @@
       return;
     }
 
-    O.isaretli.add(n);
-    sfx.isaret();
-    titre(12);
+    isaretle(b, n);
     ekraniTazele();
-    asamaKontrol();
+    asamalariDegerlendir();
   });
 
-  /* ===================== Kazanma ===================== */
+  /* ===================== Aşamalar ===================== */
 
-  function tamamlananSatirlar() {
-    const bitmis = [];
-    for (let r = 0; r < SATIR; r++) {
-      bitmis.push(satirSayilari(O.kart, r).every((n) => O.isaretli.has(n)));
-    }
-    return bitmis;
+  /** Bir aşamayı o an hak eden oyuncular. */
+  function hakEdenler(asama) {
+    return O.oyuncular.filter((o) => {
+      const d = Cekirdek.degerlendir(o.kart, o.isaretli, O.cikanlar);
+      if (asama === 'tombala') return d.tamam;
+      if (asama === 'cinko2') return d.tamSatir >= 2;
+      return d.tamSatir >= 1;
+    }).map((o) => o.id);
   }
 
-  function asamaKontrol() {
-    const bitmis = tamamlananSatirlar();
-    const adet = bitmis.filter(Boolean).length;
-    const hepsi = kartSayilari(O.kart).every((n) => O.isaretli.has(n));
+  function asamalariDegerlendir() {
+    const b = ben();
+    O.tamSatirlar = Cekirdek.degerlendir(b.kart, b.isaretli, O.cikanlar).satirlar;
 
-    O.tamSatirlar = bitmis;
+    for (const asama of ASAMALAR) {
+      if (O.kazananlar[asama].length) continue;
+      // 2. çinko ancak 1. çinko alındıktan sonra verilir.
+      if (asama === 'cinko2' && !O.kazananlar.cinko1.length) continue;
+      const hak = hakEdenler(asama);
+      if (!hak.length) continue;
 
-    if (hepsi && O.asama < 3) {
-      O.asama = 3;
-      rozetleriTazele();
-      return oyunuBitir('tombala');
-    }
-    if (adet >= 2 && O.asama < 2) {
-      O.asama = 2;
-      bildir('2. Çinko!');
-      sfx.cinko();
-      titre([30, 40, 30]);
-    } else if (adet >= 1 && O.asama < 1) {
-      O.asama = 1;
-      bildir('1. Çinko!');
-      sfx.cinko();
-      titre(30);
+      O.kazananlar[asama] = hak;
+      const bendeMi = hak.includes(BEN);
+      const kim = hak.map(adiyla).join(', ');
+
+      if (asama === 'tombala') {
+        rozetleriTazele();
+        return oyunuBitir('tombala');
+      }
+      bildir(`${ASAMA_ADI[asama]}: ${kim}`, false);
+      if (bendeMi) { sfx.cinko(); titre(asama === 'cinko2' ? [30, 40, 30] : 30); }
+      else { sfx.kaptirdi(); titre(10); }
     }
     rozetleriTazele();
+    oyuncularCiz();
   }
 
   function oyunuBitir(sebep) {
     O.bitti = true;
-    zamanDurdur();
+    oyunuBirak();
     hucreleriTazele();
 
-    const kazanildi = sebep === 'tombala';
-    if (kazanildi) { sfx.tombala(); titre([50, 30, 50, 30, 90]); }
+    const kazananlar = O.kazananlar.tombala;
+    const bendeMi = kazananlar.includes(BEN);
+    const b = ben();
+    const durum = Cekirdek.degerlendir(b.kart, b.isaretli, O.cikanlar);
 
-    $('#sonuc-baslik').textContent = kazanildi ? 'Tombala!' : 'Torba bitti';
-    $('#sonuc-yazi').textContent = kazanildi
-      ? `${O.cikanlar.length} sayıda 15'i de topladın.`
-      : `90 sayı çıktı. ${O.isaretli.size}/15 işaretledin.`;
+    if (sebep === 'tombala') {
+      $('#sonuc-baslik').textContent = bendeMi ? 'Tombala senin!' : 'Tombala kaçtı';
+      $('#sonuc-yazi').textContent = bendeMi
+        ? `${O.cikanlar.length} sayıda 15'i de topladın.`
+        : `${kazananlar.map(adiyla).join(', ')} önce bitirdi. Sende ${durum.isaretli}/15.`;
+      if (bendeMi) { sfx.tombala(); titre([50, 30, 50, 30, 90]); }
+      else { sfx.kaptirdi(); titre([20, 60, 20]); }
+    } else {
+      $('#sonuc-baslik').textContent = 'Torba bitti';
+      $('#sonuc-yazi').textContent = `90 sayı çıktı. Sende ${durum.isaretli}/15 işaretli.`;
+    }
+
+    $('#sonuc-liste').innerHTML = ASAMALAR.map((a) => `
+      <div class="sonuc-satir">
+        <span class="sonuc-satir__ad">${ASAMA_ADI[a]}</span>
+        <span class="sonuc-satir__kim ${O.kazananlar[a].length ? '' : 'yok'}">${
+          O.kazananlar[a].length ? kacis(O.kazananlar[a].map(adiyla).join(', ')) : 'kimse alamadı'
+        }</span>
+      </div>`).join('');
+
     $('#perde').hidden = false;
     ekraniTazele();
   }
@@ -441,10 +612,11 @@
 
   function kartCiz() {
     const kutu = $('#kart');
+    const kart = ben().kart;
     kutu.innerHTML = '';
     for (let r = 0; r < SATIR; r++) {
       for (let c = 0; c < SUTUN; c++) {
-        const n = O.kart[r * SUTUN + c];
+        const n = kart[r * SUTUN + c];
         if (n === null) {
           const bos = document.createElement('div');
           bos.className = 'hucre hucre--bos';
@@ -465,10 +637,12 @@
   }
 
   function hucreleriTazele() {
+    const b = ben();
+    if (!b) return;
     document.querySelectorAll('#kart .hucre[data-sayi]').forEach((h) => {
       const n = Number(h.dataset.sayi);
       const r = Number(h.dataset.satir);
-      const isaretli = O.isaretli.has(n);
+      const isaretli = b.isaretli.has(n);
       h.classList.toggle('isaretli', isaretli);
       h.classList.toggle('cikti', !isaretli && !O.bitti && O.cikanlar.includes(n));
       h.classList.toggle('satir-tam', O.tamSatirlar[r]);
@@ -477,11 +651,36 @@
   }
 
   function rozetleriTazele() {
-    $('#rozet-cinko1').classList.toggle('alindi', O.asama >= 1);
-    $('#rozet-cinko2').classList.toggle('alindi', O.asama >= 2);
-    const t = $('#rozet-tombala');
-    t.classList.toggle('alindi', O.asama >= 3);
-    t.classList.toggle('tombala', O.asama >= 3);
+    for (const a of ASAMALAR) {
+      const el = $('#rozet-' + a);
+      const kazanan = O.kazananlar[a];
+      const alindi = kazanan.length > 0;
+      el.classList.toggle('alindi', alindi);
+      el.classList.toggle('bende', alindi && kazanan.includes(BEN));
+      el.classList.toggle('tombala', a === 'tombala' && alindi);
+      el.textContent = alindi
+        ? `${ASAMA_ADI[a]} · ${kazanan.map(adiyla).join(', ')}`
+        : ASAMA_ADI[a];
+    }
+  }
+
+  function oyuncularCiz() {
+    const kutu = $('#oyuncular');
+    kutu.hidden = O.oyuncular.length < 2;
+    if (kutu.hidden) { kutu.innerHTML = ''; return; }
+    kutu.innerHTML = '';
+    for (const o of O.oyuncular) {
+      const d = Cekirdek.degerlendir(o.kart, o.isaretli, O.cikanlar);
+      const kazandigi = ASAMALAR.filter((a) => O.kazananlar[a].includes(o.id)).length;
+      const cip = document.createElement('div');
+      cip.className = 'ocip' + (o.id === BEN ? ' ocip--ben' : '');
+      cip.innerHTML = `
+        <span class="ocip__yuz" style="background:${kacis(o.renk)}">${kacis(o.avatar)}</span>
+        <span class="ocip__ad">${kacis(o.id === BEN ? 'Sen' : o.ad)}</span>
+        <span class="ocip__bar"><i style="width:${(d.isaretli / KART_SAYI) * 100}%"></i></span>
+        ${kazandigi ? `<span class="ocip__yildiz">${'★'.repeat(kazandigi)}</span>` : ''}`;
+      kutu.append(cip);
+    }
   }
 
   function sonlariCiz() {
@@ -502,6 +701,7 @@
     sonlariCiz();
     hucreleriTazele();
     rozetleriTazele();
+    oyuncularCiz();
 
     let ipucu = '';
     if (O.bitti) ipucu = '';

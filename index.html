@@ -32,6 +32,15 @@
       <div class="panel__bas"><h2 class="baslik">Ayarlar</h2></div>
 
       <div class="alan">
+        <span class="etiket">Rakip</span>
+        <div class="secim" id="secim-rakip" role="radiogroup" aria-label="Rakip sayısı">
+          <button type="button" data-deger="0">Yok</button>
+          <button type="button" data-deger="2" class="secili">2 kişi</button>
+          <button type="button" data-deger="4">4 kişi</button>
+        </div>
+      </div>
+
+      <div class="alan">
         <span class="etiket">Çekiliş hızı</span>
         <div class="secim" id="secim-hiz" role="radiogroup" aria-label="Çekiliş hızı">
           <button type="button" data-deger="5000">Yavaş</button>
@@ -61,7 +70,8 @@
       <div class="panel__bas"><h2 class="baslik">Nasıl oynanır</h2></div>
       <p class="yazi">
         Kartında 3 satır ve 15 sayı var. Torbadan 1–90 arası sayılar teker teker
-        çıkar. Çıkan sayı kartındaysa üstüne dokunup işaretle.
+        çıkar. Çıkan sayı kartındaysa üstüne dokunup işaretle. Rakipler de kendi
+        kartlarını işaretliyor; aşamayı önce tamamlayan kapar.
       </p>
       <ul class="liste">
         <li><b>1. Çinko</b> — bir satırın 5 sayısını da işaretle</li>
@@ -83,6 +93,8 @@
     </div>
     <button class="ikon" id="btn-ses" aria-label="Sesi aç kapat">🔊</button>
   </header>
+
+  <div class="oyuncular" id="oyuncular" aria-label="Oyuncular"></div>
 
   <section class="sahne">
     <div class="sahne__ust">
@@ -120,6 +132,7 @@
   <div class="perde__kutu">
     <h2 class="perde__baslik" id="sonuc-baslik">Tombala!</h2>
     <p class="perde__yazi" id="sonuc-yazi"></p>
+    <div class="sonuc-liste" id="sonuc-liste"></div>
     <button class="dugme dugme--ana" id="btn-tekrar">Tekrar oyna</button>
     <button class="dugme dugme--sade" id="btn-anamenu">Ana menü</button>
   </div>
