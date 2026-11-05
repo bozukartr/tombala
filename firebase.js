@@ -1,7 +1,7 @@
-import {randomInt,members,canStart,startRound,drawNext,resetRound} from './core.js';
+import {randomInt,decodeCard,validateCard,cardPatch,members,canStart,startRound,drawNext,resetRound} from './core.js';
 import {firebaseConfig} from './firebase-config.js';
 const SDK='https://www.gstatic.com/firebasejs/12.4.0/';
-import {ROOM_BASE as BASE,reserveRoom,reserveSeat} from './room-transactions.js';
+import {ROOM_BASE as BASE,reserveRoom,reserveSeat,commitMark} from './room-transactions.js';
 let api,db,auth,user,initPromise,unsubscribe,stopPresence,presence,roomCode;
 const roomRef=()=>api.ref(db,`${BASE}/${roomCode}`);
 function friendly(error) {
@@ -27,12 +27,12 @@ export const code=()=>roomCode;
 export async function create(name) {
   await connect();
   roomCode=await reserveRoom(api,db,user.uid,name).catch(e=>{throw friendly(e)});
-  sessionStorage.setItem('tombala-room-v3',roomCode);return roomCode;
+  sessionStorage.setItem('tombala-room-v4',roomCode);return roomCode;
 }
 export async function join(next,name) {
   await connect();
   roomCode=await reserveSeat(api,db,user.uid,next,name).catch(e=>{throw friendly(e)});
-  sessionStorage.setItem('tombala-room-v3',roomCode);return roomCode;
+  sessionStorage.setItem('tombala-room-v4',roomCode);return roomCode;
 }
 export async function watch(onRoom,onConnection,onError) {
   unsubscribe?.();stopPresence?.();
@@ -47,6 +47,7 @@ export async function watch(onRoom,onConnection,onError) {
   unsubscribe=api.onValue(roomRef(),snap=>onRoom(snap.val()),e=>onError(friendly(e)));
 }
 export async function editPlayer(changes) {
+  if(changes.card!==undefined){const card=decodeCard(changes.card),error=validateCard(card);if(error)throw new Error(error);changes={...changes,...cardPatch(card)};}
   const snapshot=await api.get(roomRef());const room=snapshot.val();
   const slot=members(room).find(([,p])=>p.uid===user.uid)?.[0];
   if(slot===undefined)throw new Error('Masadaki yerin bulunamadı.');
@@ -86,13 +87,13 @@ export async function leave(room) {
     }else await api.set(presence,false);
   }
   unsubscribe?.();stopPresence?.();unsubscribe=null;stopPresence=null;
-  await api.onDisconnect(presence).cancel();presence=null;roomCode=null;sessionStorage.removeItem('tombala-room-v3');
+  await api.onDisconnect(presence).cancel();presence=null;roomCode=null;sessionStorage.removeItem('tombala-room-v4');
 }
 
 export async function abandon() {
   unsubscribe?.();stopPresence?.();unsubscribe=null;stopPresence=null;
   if(presence){await api.onDisconnect(presence).cancel().catch(()=>{});presence=null;}
-  roomCode=null;sessionStorage.removeItem('tombala-room-v3');
+  roomCode=null;sessionStorage.removeItem('tombala-room-v4');
 }
 
 // Salt okuma kontrolü: oda oluşturmaz ve oyuncu bilgilerini almaz.
@@ -100,4 +101,8 @@ export async function verifyRoomReadAccess(){
   await connect();
   const probeCode=String(1000+randomInt(9000));
   await api.get(api.ref(db,`${BASE}/${probeCode}/meta/phase`)).catch(error=>{throw friendly(error)});
+}
+
+export async function mark(number){
+ return commitMark(api,db,user.uid,roomCode,number).catch(error=>{throw friendly(error)});
 }

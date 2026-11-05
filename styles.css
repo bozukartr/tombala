@@ -6,3 +6,69 @@
 @media(max-height:740px){.topbar{height:calc(56px + env(safe-area-inset-top,0px))}.screen{gap:16px;padding-top:5px;padding-bottom:16px}.home-screen{gap:15px;justify-content:flex-start}.home-art{height:200px;max-width:280px;margin-top:4px}.home-ticket{top:65px;left:14px;right:18px}.home-orbit{height:156px;width:156px}.token-a{width:62px;height:62px;font-size:25px;top:8px;left:27px}.token-b{height:57px;width:57px;font-size:23px;top:20px;right:24px}.home-scene h1{font-size:27px;margin-top:7px}.home-scene>p{font-size:11px;margin-top:5px}.home-scene>.tag{font-size:8px;padding:5px 8px}.home-controls{padding:14px}.tabbar{margin-bottom:14px}.invite-card{padding:14px 17px;border-radius:21px}.code-digits span{width:40px;height:44px;font-size:27px}.invite-card>p{font-size:9px;margin-top:9px}.section-heading{margin-bottom:11px}.game-screen{gap:13px}.draw-stage{padding:14px 17px 11px;border-radius:26px}.main-ball{height:90px;width:90px;font-size:39px}.draw-center{margin:10px 0}.recent-balls{min-height:22px}.recent-balls>span:not(.waiting-label){width:21px;height:21px;font-size:8px}.game-screen .avatar-ring{width:43px;height:43px}.game-screen .avatar-ring .avatar{width:33px;height:33px;font-size:12px}.milestones{padding-top:11px}.milestones:before{top:25px}.action-dock{padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}.button{min-height:50px}.result-celebration{margin-top:3px}.trophy{height:69px;width:69px;font-size:36px;border-radius:24px;margin-bottom:18px}.result-celebration h1{font-size:36px}.score-row{padding-top:10px;padding-bottom:10px}}
 @media(max-width:359px){.topbar{padding-left:17px;padding-right:17px}.screen{padding-left:17px;padding-right:17px}.action-dock{padding-left:17px;padding-right:17px}.room-toolbar h1{font-size:16px}.room-pill{gap:4px;padding:7px 8px}.room-pill>span{display:none}.invite-row{gap:5px}.code-digits{gap:5px}.code-digits span{width:38px}.invite-card{padding-left:15px;padding-right:15px}.share-button{width:39px;height:42px;border-radius:13px}.ticket{padding:10px}.cell{font-size:12px;border-radius:4px}.ticket-grid{gap:2px}.card-actions{gap:5px}.card-actions .button{font-size:9px}.avatar-ring{height:49px;width:49px}.avatar-ring .avatar{height:39px;width:39px;font-size:14px}.player-name{font-size:10px}.game-screen .avatar-ring{width:41px;height:41px}.game-screen .avatar-ring .avatar{width:31px;height:31px}.draw-stage{padding-left:13px;padding-right:13px}.main-ball{width:94px;height:94px;font-size:40px}.draw-counter{min-width:43px}.draw-counter strong{font-size:19px}.ticket-top{font-size:7px}.ticket-top>span:last-child{font-size:7px}.column-labels>span{font-size:6px}dialog{padding-left:16px;padding-right:16px}.custom-grid input{font-size:14px}.dialog-head h2{font-size:21px}.section-heading h2{font-size:15px}.home-art{max-width:290px}.home-scene h1{font-size:28px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Ortak masa: kart numarası orta solda ayrı kimlik hücresidir. */
+.ticket-grid,.custom-grid,.column-labels{grid-template-columns:repeat(9,minmax(0,1fr))}
+.card-id,.custom-id{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#e9eadd;border:1px solid #d9dece;color:#8a927b;gap:1px;user-select:none;border-radius:5px;min-width:0}
+.card-id small,.custom-id small{font-family:'DM Sans',sans-serif;font-size:5px;font-weight:700;letter-spacing:.5px;line-height:1.2}
+.card-id b{font-size:11px;line-height:1.1}.custom-id{font-size:13px;font-weight:700}
+.home-ticket .card-id b{font-size:8px}.home-ticket .card-id small{font-size:4px}
+.live-table{padding:4px 18px 12px;gap:9px}
+.live-table .room-toolbar h1{font-size:16px}
+.table-draw{display:flex;align-items:center;gap:12px;padding:11px 13px;background:#e9efdf;border:1px solid #dce5d0;border-radius:19px;min-height:83px}
+.table-ball{height:60px;width:60px;flex-shrink:0;font-size:27px;box-shadow:inset 0 -3px 0 #d8c89e33,0 3px 9px #24453608}
+.table-ball:before{inset:5px}.table-draw-info{flex:1;min-width:0}.table-draw-info .eyebrow{font-size:7px;letter-spacing:1.2px;color:#899e7a}
+.table-draw-info p{font-family:'Manrope',sans-serif;font-size:13px;letter-spacing:1px;font-weight:700;margin:5px 0 4px;color:#658358}
+.table-draw-info small{font-size:8px;line-height:1.5;color:#8c9f7b;display:block}
+.draw-history{border:0;background:transparent;padding:9px 0 9px 7px;color:#637e53;font-family:'Manrope',sans-serif;font-weight:750;font-size:18px;display:flex;align-items:baseline;gap:1px;align-self:center}
+.draw-history small{font-size:9px;color:#91a67c;font-weight:500}
+.table-awards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.table-awards>span{border:1px solid #e0e6d7;border-radius:9px;min-height:27px;padding:6px 4px;text-align:center;font-size:8px;color:#a0ad92;display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
+.table-awards b{font-weight:600;white-space:nowrap}.table-awards small{font-size:7px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.table-awards .claimed{background:#f1e7cb;border-color:#e8d8ad;color:#9b8245}
+.table-cards{display:flex;flex-direction:column;gap:7px}
+.table-card{padding:8px 10px;background:var(--white);border:1px solid #e2e7d9;border-radius:15px;position:relative;transition:border-color .2s}
+.self-card{border-color:#b7caac;border-left:3px solid var(--coral);padding:9px 10px 10px}
+.table-card-head{display:flex;align-items:center;gap:6px;min-height:21px;margin-bottom:6px}
+.table-card-head .avatar{height:21px;width:21px;border-radius:7px;font-size:9px}
+.table-card-head h2{font-size:10px;font-weight:750;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.table-card-head h2>small{font-family:'DM Sans',sans-serif;font-size:8px;font-weight:500;color:#9ca88e;margin-left:4px}
+.card-hit-count{font-family:'Manrope',sans-serif;font-size:12px;font-weight:750;white-space:nowrap;margin-left:auto}
+.card-hit-count small{font-size:8px;font-weight:500;color:#a5af96;margin-left:1px}
+.card-awards{display:flex;align-items:center;gap:3px;margin-left:auto;min-width:0}
+.card-awards:not(:empty)+.card-hit-count{margin-left:1px}
+.card-award{font-family:'DM Sans',sans-serif;font-size:6px;color:#9d8548;background:#f4ecd7;padding:3px 4px;border-radius:4px;white-space:nowrap}
+.table-card .compact-ticket{border:0!important;padding:0!important;border-radius:0;background:transparent;box-shadow:none}
+.table-card .ticket-grid{gap:3px}
+.table-card .cell{height:21px;aspect-ratio:auto;font-size:11px;border-radius:4px;line-height:1;border:1px solid #e7ebde;font-weight:650;padding:0;color:#6f8060}
+.table-card .cell.empty{background:#ecefe4;border-color:#ecefe4}
+.table-card .cell.marked{background:#77976c;border-color:#77976c;color:#fffceb;box-shadow:inset 0 -1px 0 #0000000a}
+.table-card .cell.card-id{background:#e4e8da;color:#8b967a;border-color:#dfe4d3}
+.table-card .cell.card-id small{font-size:4px}.table-card .cell.card-id b{font-size:8px}
+.self-card .cell{height:36px;font-size:16px;color:#335238;font-weight:750}
+.self-card .cell.card-id small{font-size:6px}.self-card .cell.card-id b{font-size:11px}
+.table-card button.cell:disabled{opacity:1;cursor:default}
+.table-card button.cell:not(:disabled):active{transform:scale(.9);background:#e8eddf}
+.table-card .mark-pending{opacity:.45!important}
+.card-offline{opacity:.55}
+.manual-dock{display:flex;align-items:center;justify-content:center;gap:8px;color:#82976f;font-size:11px;padding:9px 0 5px;min-height:35px}
+.network-note{font-size:10px;background:#f2e7cc;color:#a18a50;padding:9px 12px;border-radius:10px}
+.lobby-cards .table-card+.table-card{margin-top:8px}
+.celebration{position:fixed;z-index:15;top:calc(67px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(90vw,430px);border:1px solid #d4b36a;background:#f6e9bd;color:#765c29;border-radius:20px;padding:15px 18px;display:flex;align-items:center;gap:13px;box-shadow:0 12px 40px #31482724;pointer-events:none}
+.celebration strong{display:block;font-family:'Manrope',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.7px}
+.celebration p{font-size:11px;color:#a08648;margin-top:3px}
+.celebration-star{font-size:34px;color:#bc9140}.celebration-spark{margin-left:auto;align-self:flex-start;color:#caa15a;font-size:16px}
+.celebration[data-kind=tombala]{background:#dfeccd;border-color:#94b975;color:#436d35}
+.celebration.is-playing{animation:award-banner-in .35s ease-out}
+.award-flash{animation:award-card-glow .65s ease-in-out 5}
+.award-cell{animation:award-cell-glow .65s ease-in-out 5}
+@keyframes award-banner-in{from{opacity:0;transform:translate(-50%,-18px) scale(.94)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@keyframes award-card-glow{50%{border-color:#caa25a;box-shadow:0 0 0 3px #dfc58144}}
+@keyframes award-cell-glow{50%{background:#d2b36b;border-color:#c5a05a;color:white}}
+@media(max-width:359px){.live-table{padding:3px 12px 10px;gap:7px}.table-draw{gap:8px;padding:9px 10px;min-height:73px}.table-ball{height:52px;width:52px;font-size:23px}.table-draw-info small{font-size:7px}.table-draw-info p{font-size:11px}.table-card{padding:7px 8px}.table-card .ticket-grid{gap:2px}.table-card .cell{height:19px;font-size:10px}.self-card .cell{height:30px;font-size:14px}.table-card-head{margin-bottom:5px}.card-award{font-size:5px;padding:2px 3px}.table-awards>span{font-size:7px}.card-hit-count{font-size:10px}.live-table .room-toolbar h1{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.celebration.is-playing,.award-flash,.award-cell{animation:none!important}.award-flash{border-color:#caa25a}.award-cell{outline:1px solid #caa25a}}
+/* Dört kart için daha sıkı masa; kendi kartının rakamları büyük kalır. */
+.live-table .table-card .cell{height:19px}.live-table .self-card .cell{height:32px}
+.live-table .table-draw{min-height:76px;padding-top:8px;padding-bottom:8px}
+.live-table .table-ball{height:56px;width:56px;font-size:26px}
+@media(max-width:359px){.live-table .table-card .cell{height:18px}.live-table .self-card .cell{height:30px}.manual-dock{font-size:9px}}
+.live-table{gap:7px}.table-cards{gap:6px}

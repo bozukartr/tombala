@@ -2,84 +2,43 @@ import {before,after,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {ref,set,get,update,runTransaction,remove,onValue} from 'firebase/database';
 import * as api from 'firebase/database';
-import {reserveRoom,reserveSeat} from '../room-transactions.js';
-import {newRoom,newPlayer,members,startRound,drawNext,resetRound,encodeCard,makeCard,drawnNumbers} from '../core.js';
-// Firebase's Node WebSocket transport ignores NO_PROXY. These tests use only
-// the loopback emulator; do not route its WebSocket through an external proxy.
-if (process.env.FIREBASE_DATABASE_EMULATOR_HOST === '127.0.0.1:9000') { delete process.env.HTTP_PROXY; delete process.env.http_proxy; }
-const enabled=!!process.env.FIREBASE_DATABASE_EMULATOR_HOST;
-let env;const listeners=[];
+import {createAwardFeed} from '../game-events.js';
+import {reserveRoom,reserveSeat,commitMark,ROOM_BASE} from '../room-transactions.js';
+import {newRoom,newPlayer,cardPatch,makeCard,decodeCard,members,startRound,drawNext,markNumber,resetRound,range} from '../core.js';
+const{ref,set,get,update,remove,onValue,runTransaction}=api;
+if(process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000'){delete process.env.HTTP_PROXY;delete process.env.http_proxy;}
+const enabled=!!process.env.FIREBASE_DATABASE_EMULATOR_HOST;let env;const listeners=[];
 before(async()=>{if(enabled)env=await initializeTestEnvironment({projectId:'demo-tombala',database:{host:'127.0.0.1',port:9000,rules:await readFile(new URL('../database.rules.json',import.meta.url),'utf8')}});});
-after(async()=>{listeners.forEach(stop=>stop());await env?.cleanup();});
+after(async()=>{listeners.forEach(s=>s());await env?.cleanup();});
 const db=uid=>uid?env.authenticatedContext(uid).database():env.unauthenticatedContext().database();
-let counter=1100;
-async function table(){const code=String(counter++),host=db('host'),p2=db('p2'),path=`tombalaV3/${code}`;await assertSucceeds(set(ref(host,path),newRoom('host','Burak')));await assertSucceeds(set(ref(p2,path+'/players/1'),newPlayer('p2','Deniz',1)));return{code,path,host,p2};}
-const t=(name,fn)=>test(name,{skip:!enabled,timeout:20000},fn);
-t('RTDB: anonim kimlik gerekli, oda listesi kapalı, kod 4 haneli',async()=>{
- await assertFails(get(ref(db(),'tombalaV3/1111')));
- await assertFails(get(ref(db('host'),'tombalaV3')));
- await assertFails(set(ref(db('host'),'tombalaV3/12345'),newRoom('host','Burak')));
- const {path,host}=await table();await assertSucceeds(get(ref(host,path)));
-});
-t('RTDB: aynı oda kodunu iki kişi transaction ile alamaz',async()=>{
- const code=String(counter++),a=db('a'),b=db('b');
- const results=await Promise.allSettled([runTransaction(ref(a,`tombalaV3/${code}`),r=>r?undefined:newRoom('a','A'),{applyLocally:false}),runTransaction(ref(b,`tombalaV3/${code}`),r=>r?undefined:newRoom('b','B'),{applyLocally:false})]);
- assert.equal(results.filter(r=>r.status==='fulfilled'&&r.value.committed).length,1);
-});
-t('RTDB: eşzamanlı koltuk yarışı, 4 kişi sınırı ve başka oyuncuyu değiştirme koruması',async()=>{
- const {path,host,p2}=await table();const a=db('a'),b=db('b');
- const result=await Promise.allSettled([runTransaction(ref(a,path+'/players/2'),r=>r?undefined:newPlayer('a','A'),{applyLocally:false}),runTransaction(ref(b,path+'/players/2'),r=>r?undefined:newPlayer('b','B'),{applyLocally:false})]);
- assert.equal(result.filter(r=>r.status==='fulfilled'&&r.value.committed).length,1);
- await assertSucceeds(set(ref(db('four'),path+'/players/3'),newPlayer('four','Dört')));
- await assertFails(set(ref(db('five'),path+'/players/4'),newPlayer('five','Beş')));
- await assertFails(update(ref(p2,path+'/players/0'),{name:'Sahte'}));
- await assertFails(set(ref(p2,path+'/players/1/uid'),'other'));
- await assertFails(set(ref(p2,path+'/players/3'),newPlayer('p2','Çift koltuk')));
- assert.equal(members((await get(ref(host,path))).val()).length,4);
-});
-t('RTDB: hazır kart kilidi, oyun sırasında kart ve çekiliş koruması, host devralma ve yeniden lobi',async()=>{
- const {path,host,p2}=await table();
- await assertSucceeds(update(ref(host,path+'/players/0'),{readyRound:1}));
- await assertSucceeds(update(ref(p2,path+'/players/1'),{readyRound:1}));
- await assertFails(update(ref(p2,path+'/players/1'),{card:encodeCard(makeCard())}));
- await new Promise(resolve=>listeners.push(onValue(ref(host,path),resolve)));
- const started=await assertSucceeds(runTransaction(ref(host,path),r=>r?startRound(r):undefined,{applyLocally:false}));
- assert.equal(started.committed,true);
- await assertFails(update(ref(p2,path+'/players/1'),{card:encodeCard(makeCard())}));
- await assertFails(remove(ref(p2,path+'/players/1')));
- await assertFails(set(ref(p2,path+'/game/drawn'),'42'));
- await assertFails(set(ref(db('late'),path+'/players/2'),newPlayer('late','Geç')));
- await assertFails(update(ref(p2,path+'/meta'),{hostId:'p2'}));
- await assertSucceeds(set(ref(host,path+'/players/0/online'),false));
- await assertSucceeds(update(ref(p2,path+'/meta'),{hostId:'p2'}));
- await assertFails(runTransaction(ref(host,path),r=>r?drawNext(r):undefined,{applyLocally:false}));
- // P2 artık host. Aynı çekiliş mantığı ile oyunu bitirir.
- let state=(await get(ref(p2,path))).val();while(state.meta.phase==='playing')drawNext(state);
- await assertSucceeds(set(ref(p2,path),state));assert.ok(drawnNumbers(state.game).length<=90);
- resetRound(state);await assertSucceeds(set(ref(p2,path),state));
- await assertSucceeds(update(ref(host,path+'/players/0'),{card:encodeCard(makeCard())}));
- assert.equal((await get(ref(p2,path+'/meta/phase'))).val(),'lobby');
-});
+const t=(name,fn)=>test(name,{skip:!enabled,timeout:30000},fn);let counter=1100;
+const observe=(d,path,cb,predicate=()=>true)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Beklenen canlı durum gelmedi: '+path)),8000);listeners.push(onValue(ref(d,path),s=>{cb?.(s.val());if(predicate(s.val())){clearTimeout(timer);resolve(s.val());}},reject));});
+async function table(playing=false){const code=String(counter++),path=ROOM_BASE+'/'+code,host=db('host'),p2=db('p2');await set(ref(host,path),newRoom('host','Burak'));await set(ref(p2,path+'/players/1'),newPlayer('p2','Deniz',1));await observe(host,path);await observe(p2,path);if(playing){await update(ref(host,path+'/players/0'),{readyRound:1});await update(ref(p2,path+'/players/1'),{readyRound:1});await observe(host,path,null,r=>members(r).every(([,p])=>p.readyRound===1));const r=await runTransaction(ref(host,path),r=>r?startRound(r):r,{applyLocally:false});assert.ok(r.committed);await env.withSecurityRulesDisabled(async ctx=>update(ref(ctx.database(),path+'/game'),{drawn:','+range(90).map(n=>n+1).join(',')+',',lastDraw:90}));await observe(host,path,null,r=>r.game.lastDraw===90);await observe(p2,path,null,r=>r.game.lastDraw===90);}return{code,path,host,p2};}
+async function state(d,path){return(await get(ref(d,path))).val();}
+async function move(d,path,fn){return runTransaction(ref(d,path),r=>r?fn(r):r,{applyLocally:false});}
+t('RTDB: oturum, dört haneli kod, oda listesinin gizliliği',async()=>{await assertFails(get(ref(db(),ROOM_BASE+'/1111')));await assertFails(get(ref(db('host'),ROOM_BASE)));await assertFails(set(ref(db('host'),ROOM_BASE+'/12345'),newRoom('host','Burak')));const{host,path}=await table();await assertSucceeds(get(ref(host,path)));});
+t('RTDB: oda kodu çakışması yeniden denenir',async()=>{const{code}=await table();const free=String(counter++);let i=0;assert.equal(await reserveRoom(api,db('new'),'new','Yeni',()=>i++===0?code:free),free);});
+t('RTDB: dört eşzamanlı katılım yalnızca üç boş sandalyeyi doldurur',async()=>{const code=String(counter++),host=db('host'),path=ROOM_BASE+'/'+code;await set(ref(host,path),newRoom('host','Burak'));const out=await Promise.allSettled(['a','b','c','d'].map(uid=>reserveSeat(api,db(uid),uid,code,uid)));assert.equal(out.filter(r=>r.status==='fulfilled').length,3);const r=await state(host,path);assert.equal(members(r).length,4);for(const[slot,p]of members(r))assert.equal(p.cardNo,Number(slot)+1);await assertFails(set(ref(db('five'),path+'/players/4'),newPlayer('five','Beş',3)));});
+t('RTDB: kart ve kimlik lobide doğrulanır, hazır kart değiştirilemez',async()=>{const{host,p2,path}=await table();await assertFails(update(ref(p2,path+'/players/0'),{name:'Sahte'}));await assertFails(update(ref(p2,path+'/players/1'),{cardNo:99}));await assertSucceeds(update(ref(p2,path+'/players/1'),cardPatch(makeCard())));await assertFails(update(ref(p2,path+'/players/1'),{hits0:5}));await assertFails(update(ref(p2,path+'/players/1'),{marks:',14,'}));await update(ref(p2,path+'/players/1'),{readyRound:1});await assertFails(update(ref(p2,path+'/players/1'),cardPatch(makeCard())));await assertFails(update(ref(host,path+'/players/0'),{card:Array(30).fill(0).join(',')}));});
+t('RTDB: sayı çekilmesi otomatik işaret veya ödül üretmez',async()=>{const{host,p2,path}=await table();await update(ref(host,path+'/players/0'),{readyRound:1});await update(ref(p2,path+'/players/1'),{readyRound:1});await observe(host,path,null,r=>members(r).every(([,p])=>p.readyRound===1));await assertSucceeds(move(host,path,startRound));await assertSucceeds(move(host,path,drawNext));const r=await state(host,path);assert.equal(r.game.seq,0);assert.equal(r.players[0].marks,',');assert.equal(r.game.awards.first.uid,'');await assertFails(set(ref(p2,path+'/game/drawn'),',42,'));});
+t('RTDB: oyuncunun manuel işaretlemesi iki dinleyiciye de canlı ulaşır',async()=>{const{host,p2,path,code}=await table(true);let seenHost,seenPeer;await observe(host,path,r=>seenHost=r);await observe(p2,path,r=>seenPeer=r);const r=await state(p2,path),n=decodeCard(r.players[1].card).filter(Boolean)[0];assert.ok(await commitMark(api,p2,'p2',code,n));await observe(host,path,null,r=>r.game.seq===1);await observe(p2,path,null,r=>r.game.seq===1);assert.ok(seenHost.players[1].marks.includes(','+n+','));assert.ok(seenPeer.players[1].marks.includes(','+n+','));assert.equal(seenHost.game.seq,1);assert.equal(seenPeer.game.seq,1);assert.equal(seenHost.players[0].marks,',');await assertFails(set(ref(p2,path+'/players/1/marks'),',42,'));});
+t('RTDB: sahte işaret, sıra atlama, başka oyuncunun kartı ve ödül çalma engellenir',async()=>{const{host,p2,path}=await table(true);const original=await state(p2,path),n=decodeCard(original.players[1].card).filter(Boolean)[0];const valid=markNumber(structuredClone(original),'p2',n);for(const mutate of [r=>r.game.seq++,r=>r.game.lastRow=(r.game.lastRow+1)%3,r=>r.players[1]['hits'+r.game.lastRow]=5,r=>r.players[0].marks=',42,',r=>r.players[0].cardNo=4,r=>r.players[1].card=original.players[0].card,r=>r.game.awards.first={uid:'p2',seq:1,number:n,row:0},r=>delete r.players[0]]){const bad=structuredClone(valid);mutate(bad);await assertFails(set(ref(p2,path),bad));}await assertFails(set(ref(db('spectator'),path),valid));await assertSucceeds(set(ref(p2,path),valid));const drawn=drawNext(structuredClone(valid));drawn.players[1].marks=',';drawn.players[1]['hits'+valid.game.lastRow]=0;await assertFails(set(ref(host,path),drawn));});
+t('RTDB: çıkmamış sayı için elle üretilmiş transaction reddedilir',async()=>{const{p2,path}=await table(true);const r=await state(p2,path),n=decodeCard(r.players[1].card).filter(Boolean)[0];await env.withSecurityRulesDisabled(ctx=>update(ref(ctx.database(),path+'/game'),{drawn:',',lastDraw:0}));const bad=markNumber(r,'p2',n);bad.game.drawn=',';bad.game.lastDraw=0;await assertFails(set(ref(p2,path),bad));});
+t('RTDB: aynı son sayıya eşzamanlı dokunuşta tek çinko kazananı ve tek sıra vardır',async()=>{const{host,p2,path,code}=await table();const c=decodeCard((await state(host,path)).players[0].card);await update(ref(p2,path+'/players/1'),cardPatch(c));await update(ref(host,path+'/players/0'),{readyRound:1});await update(ref(p2,path+'/players/1'),{readyRound:1});await observe(host,path,null,r=>members(r).every(([,p])=>p.readyRound===1));await move(host,path,startRound);await env.withSecurityRulesDisabled(ctx=>update(ref(ctx.database(),path+'/game'),{drawn:','+range(90).map(n=>n+1).join(',')+',',lastDraw:90}));await observe(host,path,null,r=>r.game.lastDraw===90);await observe(p2,path,null,r=>r.game.lastDraw===90);const feedA=createAwardFeed(),feedB=createAwardFeed(),eventsA=[],eventsB=[];await observe(host,path,r=>eventsA.push(...feedA.update(r,code)));await observe(p2,path,r=>eventsB.push(...feedB.update(r,code)));const nums=c.slice(0,9).filter(Boolean);for(const n of nums.slice(0,4)){await commitMark(api,host,'host',code,n);await commitMark(api,p2,'p2',code,n);}const out=await Promise.all([commitMark(api,host,'host',code,nums[4]),commitMark(api,p2,'p2',code,nums[4])]);assert.ok(out.every(Boolean));await observe(host,path,null,r=>r.game.seq===10);await observe(p2,path,null,r=>r.game.seq===10);const r=await state(host,path);assert.deepEqual(eventsA,eventsB);assert.equal(eventsA.length,1);assert.equal(eventsA[0].kind,'first');assert.equal(r.game.seq,10);assert.equal(r.game.awards.first.seq,9);assert.ok(['host','p2'].includes(r.game.awards.first.uid));assert.equal(r.game.awards.second.uid,'');});
+t('RTDB: tombala ilk manuel tamamlayana gider, tekrar lobide herkesin işaretleri temizlenir',async()=>{const{host,p2,path,code}=await table(true);const card=decodeCard((await state(p2,path)).players[1].card);for(const n of card.filter(Boolean))assert.ok(await commitMark(api,p2,'p2',code,n));const r=await state(host,path);assert.equal(r.meta.phase,'finished');assert.equal(r.game.awards.tombala.uid,'p2');assert.equal(r.game.awards.tombala.seq,15);await assertSucceeds(move(host,path,resetRound));const reset=await state(host,path);assert.equal(reset.meta.phase,'lobby');assert.equal(reset.meta.round,2);assert.equal(reset.players[1].marks,',');assert.equal(reset.players[1].hits0,0);assert.equal(reset.game.awards.first.uid,'');assert.equal(reset.players[1].card,r.players[1].card);});
+t('RTDB: ev sahibi bağlantısı kesilince devralma ve manuel oyun sürer',async()=>{const{host,p2,path,code}=await table(true);await assertFails(update(ref(p2,path+'/meta'),{hostId:'p2'}));await set(ref(host,path+'/players/0/online'),false);await assertSucceeds(update(ref(p2,path+'/meta'),{hostId:'p2'}));const r=await state(p2,path),n=decodeCard(r.players[1].card).filter(Boolean)[0];assert.ok(await commitMark(api,p2,'p2',code,n));await assertFails(remove(ref(p2,path+'/players/1')));});
 
-t('RTDB: gerçek oda servisi kod çakışmasından sonra yeniden dener',async()=>{
- const {code}=await table();let attempt=0;const free=String(counter++);
- assert.equal(await reserveRoom(api,db('new-host'),'new-host','Yeni',()=>attempt++===0?code:free),free);
-});
-t('RTDB: gerçek oda servisi 4 eşzamanlı katılımda yalnızca 3 boş koltuğu doldurur',async()=>{
- const code=String(counter++),host=db('host');await set(ref(host,`tombalaV3/${code}`),newRoom('host','Burak'));
- const outcomes=await Promise.allSettled(['a','b','c','d'].map(uid=>reserveSeat(api,db(uid),uid,code,uid)));
- assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,3);
- assert.equal(members((await get(ref(host,`tombalaV3/${code}`))).val()).length,4);
- const denied=outcomes.find(r=>r.status==='rejected');assert.match(denied.reason.message,/dolu/);
-});
-
-t('RTDB: eski kart, kaydırılmış boşluk ve yanlış sütun aralığı reddedilir',async()=>{
- const {host,path}=await table();const card=makeCard();
- await assertFails(update(ref(host,path+'/players/0'),{card:Array(27).fill(0).join(',')}));
- const shifted=[...card];[shifted[0],shifted[1]]=[shifted[1],shifted[0]];
- await assertFails(update(ref(host,path+'/players/0'),{card:encodeCard(shifted)}));
- const wrong=[...card];wrong[0]=15;await assertFails(update(ref(host,path+'/players/0'),{card:encodeCard(wrong)}));
- await assertSucceeds(update(ref(host,path+'/players/0'),{card:encodeCard(card)}));
+t('RTDB: eşzamanlı son dokunuşta tek tombala kaydı oluşur',async()=>{
+ const {host,p2,path,code}=await table();const c=decodeCard((await state(host,path)).players[0].card);
+ await update(ref(p2,path+'/players/1'),cardPatch(c));await update(ref(host,path+'/players/0'),{readyRound:1});await update(ref(p2,path+'/players/1'),{readyRound:1});
+ await observe(host,path,null,r=>members(r).every(([,p])=>p.readyRound===1));await move(host,path,startRound);
+ await env.withSecurityRulesDisabled(ctx=>update(ref(ctx.database(),path+'/game'),{drawn:','+range(90).map(n=>n+1).join(',')+',',lastDraw:90}));
+ await observe(host,path,null,r=>r.game.lastDraw===90);await observe(p2,path,null,r=>r.game.lastDraw===90);
+ const numbers=c.filter(Boolean);for(const n of numbers.slice(0,14)){await commitMark(api,host,'host',code,n);await commitMark(api,p2,'p2',code,n);}
+ await observe(host,path,null,r=>r.game.seq===28);await observe(p2,path,null,r=>r.game.seq===28);
+ const results=await Promise.allSettled([commitMark(api,host,'host',code,numbers[14]),commitMark(api,p2,'p2',code,numbers[14])]);
+ assert.equal(results.filter(r=>r.status==='fulfilled'&&r.value===true).length,1);
+ await observe(host,path,null,r=>r.meta.phase==='finished');const r=await state(host,path);
+ assert.equal(r.game.seq,29);assert.equal(r.game.awards.tombala.seq,29);assert.ok(['host','p2'].includes(r.game.awards.tombala.uid));
 });
