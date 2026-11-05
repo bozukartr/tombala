@@ -1,4 +1,4 @@
-import {members,canStart,startRound,drawNext,resetRound} from './core.js';
+import {randomInt,members,canStart,startRound,drawNext,resetRound} from './core.js';
 import {firebaseConfig} from './firebase-config.js';
 const SDK='https://www.gstatic.com/firebasejs/12.4.0/';
 import {ROOM_BASE as BASE,reserveRoom,reserveSeat} from './room-transactions.js';
@@ -6,7 +6,7 @@ let api,db,auth,user,initPromise,unsubscribe,stopPresence,presence,roomCode;
 const roomRef=()=>api.ref(db,`${BASE}/${roomCode}`);
 function friendly(error) {
   const code=String(error?.code||error?.message||'');
-  if(/permission|PERMISSION_DENIED/i.test(code)) return new Error('Oda erişimi reddedildi. Firebase için yeni database.rules.json kurallarının yayımlanması gerekiyor.');
+  if(/permission|PERMISSION_DENIED/i.test(code)) return Object.assign(new Error('Oda bağlantısı henüz hazır değil.'),{setupRequired:true});
   if(/operation-not-allowed|admin-restricted/i.test(code)) return new Error('Firebase projesinde anonim girişin etkinleştirilmesi gerekiyor.');
   if(/network|unavailable|timeout/i.test(code)) return new Error('Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.');
   return error;
@@ -93,4 +93,11 @@ export async function abandon() {
   unsubscribe?.();stopPresence?.();unsubscribe=null;stopPresence=null;
   if(presence){await api.onDisconnect(presence).cancel().catch(()=>{});presence=null;}
   roomCode=null;sessionStorage.removeItem('tombala-room-v3');
+}
+
+// Salt okuma kontrolü: oda oluşturmaz ve oyuncu bilgilerini almaz.
+export async function verifyRoomReadAccess(){
+  await connect();
+  const probeCode=String(1000+randomInt(9000));
+  await api.get(api.ref(db,`${BASE}/${probeCode}/meta/phase`)).catch(error=>{throw friendly(error)});
 }
