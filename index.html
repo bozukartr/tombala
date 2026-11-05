@@ -1,270 +1,29 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-<meta charset="utf-8" />
-<!-- user-scalable=no + maximum-scale=1: çift dokunuş ve çimdik yakınlaştırmayı kapatır.
-     iOS Safari bunları yok sayar; asıl iş CSS'teki touch-action ve app.js'teki jest engelinde. -->
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#171029" />
-<meta name="color-scheme" content="dark" />
-<meta name="description" content="Tarayıcıda oynanan tombala." />
-<!-- Ana ekrana eklendiğinde tarayıcı çubuğu olmadan, uygulama gibi açılsın -->
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Tombala" />
-<title>Tombala</title>
-<link rel="stylesheet" href="styles.css?v=3" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f7f5ef">
+<meta name="description" content="Aynı masanın etrafında, nerede olursanız olun. 2–4 kişilik çevrimiçi aile tombalası.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tombala">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+<title>Tombala · Birlikte güzel</title>
 </head>
 <body>
-
-<!-- ======================= ANA MENÜ ======================= -->
-<section class="ekran ekran--acik" id="ekran-menu">
-  <div class="kutu">
-    <h1 class="logo" aria-label="Tombala">
-      <span class="tas">T</span><span class="tas">O</span><span class="tas">M</span><span class="tas">B</span><span class="tas">A</span><span class="tas">L</span><span class="tas">A</span>
-    </h1>
-    <p class="slogan">Torbadan sayılar çıkar, kartını doldur.</p>
-
-    <button class="dugme dugme--ana" id="btn-basla">Botlarla oyna</button>
-
-    <div class="panel">
-      <div class="panel__bas"><h2 class="baslik">Çevrimiçi</h2></div>
-      <p class="yazi">Oda kur, 5 haneli kodu paylaş, arkadaşlarınla oyna.</p>
-      <div class="sur">
-        <button class="dugme dugme--ince" id="btn-oda-kur">Oda kur</button>
-        <button class="dugme dugme--ince" id="btn-odaya-katil">Odaya katıl</button>
-      </div>
-      <p class="not" id="ag-not" hidden></p>
-    </div>
-
-    <p class="not">Sürüm <span id="surum">—</span></p>
-
-    <div class="panel">
-      <div class="panel__bas"><h2 class="baslik">Ayarlar</h2></div>
-
-      <div class="alan">
-        <span class="etiket">Rakip</span>
-        <div class="secim" id="secim-rakip" role="radiogroup" aria-label="Rakip sayısı">
-          <button type="button" data-deger="0">Yok</button>
-          <button type="button" data-deger="2" class="secili">2 kişi</button>
-          <button type="button" data-deger="4">4 kişi</button>
-        </div>
-      </div>
-
-      <div class="alan">
-        <span class="etiket">Çekiliş hızı</span>
-        <div class="secim" id="secim-hiz" role="radiogroup" aria-label="Çekiliş hızı">
-          <button type="button" data-deger="5000">Yavaş</button>
-          <button type="button" data-deger="3500" class="secili">Normal</button>
-          <button type="button" data-deger="2000">Hızlı</button>
-        </div>
-      </div>
-
-      <div class="alan">
-        <span class="etiket">İşaretleme</span>
-        <div class="secim" id="secim-isaret" role="radiogroup" aria-label="İşaretleme">
-          <button type="button" data-deger="elle" class="secili">Elle işaretle</button>
-          <button type="button" data-deger="otomatik">Otomatik</button>
-        </div>
-      </div>
-
-      <div class="alan">
-        <span class="etiket">Ses ve titreşim</span>
-        <div class="secim" id="secim-ses" role="radiogroup" aria-label="Ses ve titreşim">
-          <button type="button" data-deger="acik" class="secili">Açık</button>
-          <button type="button" data-deger="kapali">Kapalı</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__bas"><h2 class="baslik">Nasıl oynanır</h2></div>
-      <p class="yazi">
-        Kartında 3 satır ve 15 sayı var. Torbadan 1–90 arası sayılar teker teker
-        çıkar. Çıkan sayı kartındaysa üstüne dokunup işaretle. Hak ettiğinde
-        aşağıdaki düğmeyle <b>ilan et</b> — ilan etmezsen aşama senin sayılmaz,
-        rakipler kapar. Boşa ilan edersen 10 saniye ilan yapamazsın.
-      </p>
-      <ul class="liste">
-        <li><b>1. Çinko</b> — bir satırın 5 sayısını da işaretle</li>
-        <li><b>2. Çinko</b> — ikinci bir satırı tamamla</li>
-        <li><b>Tombala</b> — 15 sayının hepsini işaretle, oyun biter</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<!-- ======================= ODAYA KATIL ======================= -->
-<section class="ekran" id="ekran-katil">
-  <div class="kutu">
-    <div class="bar">
-      <button class="ikon" id="btn-katil-geri" aria-label="Geri">‹</button>
-      <h2 class="baslik baslik--orta">Odaya katıl</h2>
-      <span class="ikon ikon--bos" aria-hidden="true"></span>
-    </div>
-    <p class="yazi" style="text-align:center">Odayı kuran kişideki 5 haneli kodu gir.</p>
-    <div class="kod-girisi" id="kod-girisi">
-      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="1. hane" />
-      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="2. hane" />
-      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="3. hane" />
-      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="4. hane" />
-      <input inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="5. hane" />
-    </div>
-    <button class="dugme dugme--ana" id="btn-katil" disabled>Odaya gir</button>
-  </div>
-</section>
-
-<!-- ======================= LOBİ ======================= -->
-<section class="ekran" id="ekran-lobi">
-  <div class="kutu">
-    <div class="bar">
-      <button class="ikon" id="btn-lobi-geri" aria-label="Menüye dön">‹</button>
-      <h2 class="baslik baslik--orta">Lobi</h2>
-      <span class="ikon ikon--bos" aria-hidden="true"></span>
-    </div>
-
-    <div class="oda-kodu" id="oda-kodu-kutu" hidden>
-      <span class="etiket">Oda kodu</span>
-      <strong class="oda-kodu__deger" id="oda-kodu">—</strong>
-      <div class="sur">
-        <button class="dugme dugme--ince" id="btn-kod-kopyala">Kodu kopyala</button>
-        <button class="dugme dugme--ince" id="btn-kod-paylas">Paylaş</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__bas"><h3 class="baslik">Profilin</h3></div>
-      <label class="alan">
-        <span class="etiket">Adın</span>
-        <input id="in-ad" type="text" maxlength="12" placeholder="Adını yaz" autocomplete="nickname" />
-      </label>
-      <div class="alan">
-        <span class="etiket">Simgen</span>
-        <div class="secici" id="avatar-secici" role="radiogroup" aria-label="Simge seç"></div>
-      </div>
-      <div class="alan">
-        <span class="etiket">Rengin</span>
-        <div class="secici secici--renk" id="renk-secici" role="radiogroup" aria-label="Renk seç"></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__bas">
-        <h3 class="baslik">Kartın</h3>
-        <span class="sayac-yazi" id="kart-durum">Rastgele</span>
-      </div>
-      <div id="lobi-kart" class="kart kart--onizleme"></div>
-      <div class="sur">
-        <button class="dugme dugme--ince" id="btn-rastgele-kart">Rastgele kart</button>
-        <button class="dugme dugme--ince" id="btn-kart-kur">Kendim kurayım</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__bas">
-        <h3 class="baslik">Oyuncular</h3>
-        <span class="sayac-yazi" id="lobi-sayi">1/1</span>
-      </div>
-      <ul class="oyuncu-listesi" id="lobi-oyuncular"></ul>
-    </div>
-
-    <button class="dugme" id="btn-hazir" hidden>Hazırım</button>
-    <button class="dugme dugme--ana" id="btn-oyunu-baslat">Oyunu başlat</button>
-  </div>
-</section>
-
-<!-- ======================= OYUN ======================= -->
-<section class="ekran ekran--oyun" id="ekran-oyun">
-
-  <header class="bar">
-    <button class="ikon" id="btn-menu" aria-label="Menüye dön">‹</button>
-    <div class="cipler">
-      <span class="cip"><b id="sayi-cikan">0</b> çıkan</span>
-      <span class="cip"><b id="sayi-kalan">90</b> kalan</span>
-    </div>
-    <button class="ikon" id="btn-ses" aria-label="Sesi aç kapat">🔊</button>
-  </header>
-
-  <div class="oyuncular" id="oyuncular" aria-label="Oyuncular"></div>
-
-  <section class="sahne">
-    <div class="sahne__ust">
-      <div class="torba" id="torba" aria-hidden="true">
-        <svg viewBox="0 0 48 52" width="44" height="48">
-          <path d="M12 14h24c6 6 8 14 8 22 0 9-9 14-20 14S4 45 4 36c0-8 2-16 8-22z" fill="#3a2a5c" stroke="#54407f" stroke-width="2"/>
-          <path d="M12 14c4-3 8-4 12-4s8 1 12 4" fill="none" stroke="#ffb43d" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="24" cy="34" r="7" fill="#241a3d"/>
-        </svg>
-      </div>
-      <div class="tas tas--dev bos" id="cikan" aria-live="polite" aria-label="Çıkan sayı">—</div>
-    </div>
-    <div class="sonlar" id="sonlar" aria-label="Son çıkan sayılar"></div>
-  </section>
-
-  <main class="tahta">
-    <div class="kart" id="kart"></div>
-    <p class="ipucu" id="ipucu"></p>
-  </main>
-
-  <footer class="alt">
-    <div class="ilanlar">
-      <button class="dugme dugme--ilan" data-ilan="cinko1" disabled>1. Çinko</button>
-      <button class="dugme dugme--ilan" data-ilan="cinko2" disabled>2. Çinko</button>
-      <button class="dugme dugme--ilan dugme--tombala" data-ilan="tombala" disabled>Tombala</button>
-    </div>
-    <div class="sur">
-      <button class="dugme dugme--ince" id="btn-durdur">Duraklat</button>
-      <button class="dugme dugme--ince" id="btn-cek">Sayı çek</button>
-    </div>
-  </footer>
-</section>
-
-<!-- ======================= SONUÇ ======================= -->
-<div class="perde" id="perde" hidden>
-  <div class="perde__kutu">
-    <h2 class="perde__baslik" id="sonuc-baslik">Tombala!</h2>
-    <p class="perde__yazi" id="sonuc-yazi"></p>
-    <div class="sonuc-liste" id="sonuc-liste"></div>
-    <button class="dugme dugme--ana" id="btn-tekrar">Tekrar oyna</button>
-    <button class="dugme dugme--sade" id="btn-anamenu">Lobiye dön</button>
-  </div>
+<div class="app-shell">
+<header class="topbar"><a href="./" class="brand" aria-label="Tombala ana sayfa"><span class="brand-icon">t<span></span></span>tombala<span class="brand-dot">.</span></a><div class="header-actions"><span id="connection" class="connection"><i></i><span>Birlikte güzel</span></span><button id="help-button" class="icon-button" aria-label="Nasıl oynanır?">?</button><button id="sound-button" class="icon-button" aria-label="Sesi aç" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6m0-6-5 6"/></svg></button></div></header>
+<main id="app" tabindex="-1"></main>
+<footer class="footer"><span>Bir kart, biraz şans, bolca muhabbet.</span><span>2–4 kişi <span class="footer-dot">·</span> 7'den 70'e</span></footer>
 </div>
-
-<!-- ======================= GİRİŞ ======================= -->
-<div class="cekmece" id="giris" hidden>
-  <div class="cekmece__panel">
-    <div class="cekmece__bas">
-      <h3 class="baslik">Nasıl girmek istersin?</h3>
-      <button class="ikon" id="btn-giris-kapat" aria-label="Kapat">✕</button>
-    </div>
-    <p class="yazi">Çevrimiçi oynamak için bir kimlik gerekiyor. İsimsiz giriş yeterli;
-      Google ile girersen aynı hesabı başka cihazda da kullanabilirsin.</p>
-    <button class="dugme dugme--ana" id="btn-giris-google">Google ile gir</button>
-    <button class="dugme" id="btn-giris-anonim">İsimsiz gir</button>
-    <p class="uyari" id="giris-uyari"></p>
-  </div>
-</div>
-
-<!-- ======================= KART KURMA ======================= -->
-<div class="cekmece" id="cekmece" hidden>
-  <div class="cekmece__panel">
-    <div class="cekmece__bas">
-      <h3 class="baslik">Kartını kur</h3>
-      <span class="sayac-yazi" id="cekmece-sayac">Kalan 15</span>
-      <button class="ikon" id="btn-cekmece-kapat" aria-label="Kapat">✕</button>
-    </div>
-    <div class="sayi-izgara" id="sayi-izgara"></div>
-    <p class="uyari" id="cekmece-uyari"></p>
-    <div class="sur">
-      <button class="dugme dugme--ince" id="btn-cekmece-temizle">Temizle</button>
-      <button class="dugme dugme--ince dugme--vurgu" id="btn-cekmece-kaydet" disabled>Kartı kullan</button>
-    </div>
-  </div>
-</div>
-
-<div id="bildirim" role="status" aria-live="polite"></div>
-
-<script src="app.js?v=3" defer></script>
+<div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+<dialog id="help-dialog"><div class="dialog-head"><span class="eyebrow">HEP BİRLİKTE</span><button class="icon-button" data-close aria-label="Kapat">×</button></div><h2>Bir turda öğrenirsin.</h2><p>Oda kur, dört haneli kodu sevdiklerinle paylaş. Lobide herkes bir kart seçsin ve hazır olsun.</p><ol class="rules-list"><li><b>Sayılar torbadan çıkar.</b><span>Oda sahibi sayıları tek tek veya otomatik çeker. Kartındaki sayılar kendiliğinden işaretlenir.</span></li><li><b>Satırları tamamla.</b><span>Bir tam satır: 1. çinko. İki tam satır: 2. çinko.</span></li><li><b>Ve… tombala!</b><span>15 sayıyı ilk tamamlayan kazanır. Aynı sayıda bitirenler kazanmayı paylaşır.</span></li></ol><p class="small muted">Oyun bitince “Tekrar oyna” ile aynı odanın lobisine dönersiniz. Herkes yeniden kart seçebilir.</p><button class="button primary full" data-close>Anlaştık, başlayalım</button></dialog>
+<dialog id="card-dialog"></dialog>
+<dialog id="leave-dialog"><div class="dialog-head"><span class="eyebrow">KÜÇÜK BİR MOLA</span><button class="icon-button" data-close aria-label="Kapat">×</button></div><h2>Masadan ayrılıyor musun?</h2><p>Oyun devam ediyorsa kartın bu tur boyunca masada kalır. Diğer oyuncular devam edebilir.</p><div class="dialog-actions"><button class="button secondary" data-close>Masada kal</button><button id="confirm-leave" class="button primary">Ayrıl</button></div></dialog>
+<noscript>Bu oyunu oynamak için tarayıcında JavaScript'i etkinleştir.</noscript>
+<script type="module" src="app.js"></script>
 </body>
 </html>

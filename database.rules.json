@@ -2,89 +2,44 @@
   "rules": {
     ".read": false,
     ".write": false,
-
-    "odalar": {
-      // Yorumlar // ile yazılır. "//" ADLI bir anahtar kural motorunda yol
-      // parçası sayılır ve dosyanın tamamının reddedilmesine yol açar.
-      // numChildren() diye bir kural metodu da yoktur; oyuncu sayısı sınırı
-      // istemcide uygulanır.
-      "$kod": {
-        // Oda kodunu bilen ve giriş yapmış herkes okuyabilir. odalar listesi okunamaz.
-        ".read": "auth != null && $kod.matches(/^[0-9]{5}$/)",
-
+    "tombalaV2": {
+      "$code": {
+        ".read": "auth != null && $code.matches(/^[1-9][0-9]{3}$/)",
+        ".write": "auth != null && $code.matches(/^[1-9][0-9]{3}$/) && ((!data.exists() && newData.child('meta/hostId').val() === auth.uid && newData.child('players/0/uid').val() === auth.uid && !newData.child('players/1').exists() && !newData.child('players/2').exists() && !newData.child('players/3').exists() && newData.child('meta/phase').val() === 'lobby' && newData.child('meta/round').val() === 1) || (data.child('meta/hostId').val() === auth.uid && data.child('players').exists() && newData.exists()))",
+        ".validate": "newData.hasChildren(['meta','players','game']) && newData.child('meta/createdAt').val() > now - 21600000",
         "meta": {
-          ".write": "auth != null && (!data.exists() || data.child('hostId').val() === auth.uid)",
-          ".validate": "newData.hasChildren(['hostId', 'durum', 'kuruldu'])",
-          "durum": { ".validate": "newData.val() === 'lobi' || newData.val() === 'oyun' || newData.val() === 'bitti'" },
-          "kuruldu": { ".validate": "newData.isNumber()" },
-          "hostId": {
-            // Host koptuysa ya da odadan tamamen çıktıysa devralınabilir.
-            ".write": "auth != null && (!data.exists() || data.val() === auth.uid || !root.child('odalar/' + $kod + '/oyuncular/' + data.val()).exists() || root.child('odalar/' + $kod + '/oyuncular/' + data.val() + '/bagli').val() === false)",
-            // Kimse üçüncü birini host yapamaz.
-            ".validate": "newData.val() === auth.uid || root.child('odalar/' + $kod + '/oyuncular/' + newData.val()).exists()"
-          },
-          "ayarlar": {
-            "hiz": { ".validate": "newData.isNumber() && newData.val() >= 1000 && newData.val() <= 20000" },
-            "isaret": { ".validate": "newData.val() === 'elle' || newData.val() === 'otomatik'" },
-            "$baska": { ".validate": false }
+          ".write": "auth != null && data.exists() && ((!root.child('tombalaV2/'+$code+'/players/0').exists() || root.child('tombalaV2/'+$code+'/players/0/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/0/online').val() === false) && (!root.child('tombalaV2/'+$code+'/players/1').exists() || root.child('tombalaV2/'+$code+'/players/1/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/1/online').val() === false) && (!root.child('tombalaV2/'+$code+'/players/2').exists() || root.child('tombalaV2/'+$code+'/players/2/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/2/online').val() === false) && (!root.child('tombalaV2/'+$code+'/players/3').exists() || root.child('tombalaV2/'+$code+'/players/3/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/3/online').val() === false)) && (root.child('tombalaV2/'+$code+'/players/0/uid').val() === auth.uid || root.child('tombalaV2/'+$code+'/players/1/uid').val() === auth.uid || root.child('tombalaV2/'+$code+'/players/2/uid').val() === auth.uid || root.child('tombalaV2/'+$code+'/players/3/uid').val() === auth.uid) && newData.child('hostId').val() === auth.uid && newData.child('phase').val() === data.child('phase').val() && newData.child('round').val() === data.child('round').val() && newData.child('createdAt').val() === data.child('createdAt').val()",
+          ".validate": "newData.hasChildren(['hostId','phase','round','createdAt'])",
+          "hostId": {".validate":"newData.isString() && newData.val().length > 0 && newData.val().length <= 128"},
+          "phase": {".validate":"newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'"},
+          "round": {".validate":"newData.isNumber() && newData.val() >= 1 && newData.val() <= 10000"},
+          "createdAt": {".validate":"newData.isNumber() && ((!data.exists() && newData.val() <= now + 60000) || newData.val() === data.val())"},
+          "$other":{".validate":false}
+        },
+        "players": {
+          "$slot": {
+            ".write": "auth != null && $slot.matches(/^[0-3]$/) && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby' && ((data.child('uid').val() === auth.uid && (!newData.exists() || newData.child('uid').val() === auth.uid)) || (!data.exists() && newData.child('uid').val() === auth.uid && root.child('tombalaV2/'+$code+'/players/0/uid').val() !== auth.uid && root.child('tombalaV2/'+$code+'/players/1/uid').val() !== auth.uid && root.child('tombalaV2/'+$code+'/players/2/uid').val() !== auth.uid && root.child('tombalaV2/'+$code+'/players/3/uid').val() !== auth.uid))",
+            ".validate": "$slot.matches(/^[0-3]$/) && newData.hasChildren(['uid','name','color','card','readyRound','online','joinedAt'])",
+            "uid":{".validate":"newData.isString() && ((!data.exists() && newData.val() === auth.uid) || newData.val() === data.val())"},
+            "name":{".validate":"newData.isString() && newData.val().length >= 1 && newData.val().length <= 16 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby'))"},
+            "color":{".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() <= 3 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby'))"},
+            "card":{".validate":"newData.isString() && newData.val().matches(/^[0-9]{1,2}(,[0-9]{1,2}){26}$/) && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby' && data.parent().child('readyRound').val() !== root.child('tombalaV2/'+$code+'/meta/round').val()))"},
+            "readyRound":{".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby'))"},
+            "online":{".write":"auth != null && data.parent().child('uid').val() === auth.uid", ".validate":"newData.isBoolean()"},
+            "joinedAt":{".validate":"newData.isNumber() && (!data.exists() || newData.val() === data.val())"},
+            "$other":{".validate":false}
           }
         },
-
-        "oyuncular": {
-          "$uid": {
-            // Oyuncu yalnızca kendi düğümünü yazar.
-            ".write": "auth != null && $uid === auth.uid",
-            ".validate": "newData.hasChildren(['ad', 'avatar', 'renk', 'katildi'])",
-            "ad": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 12" },
-            "avatar": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 4" },
-            "renk": { ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)" },
-            "hazir": { ".validate": "newData.isBoolean()" },
-            "bagli": { ".validate": "newData.isBoolean()" },
-            "katildi": { ".validate": "newData.isNumber()" },
-            // Kart yalnızca lobide değiştirilebilir; oyun başladıktan sonra sabit.
-            "kart": {
-              ".validate": "newData.isString() && newData.val().length <= 120 && (newData.val() === '' || root.child('odalar/' + $kod + '/meta/durum').val() === 'lobi')"
-            },
-            "isaretli": { ".validate": "newData.isString() && newData.val().length <= 270" },
-            "$baska": { ".validate": false }
-          }
+        "game": {
+          ".validate":"newData.hasChildren(['drawn','auto','interval','updatedAt','awards'])",
+          "drawn":{".validate":"newData.isString() && newData.val().length <= 270 && (newData.val() === '' || newData.val().matches(/^[1-9][0-9]?(,[1-9][0-9]?){0,89}$/))"},
+          "auto":{".validate":"newData.isBoolean()"},
+          "interval":{".validate":"newData.val() === 5000"},
+          "updatedAt":{".validate":"newData.isNumber()"},
+          "awards":{".validate":"newData.isString() && newData.val().length <= 3000"},
+          "$other":{".validate":false}
         },
-
-        "oyun": {
-          // Sayıları yalnızca host çeker.
-          ".write": "auth != null && root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid",
-          "cikanlar": { ".validate": "newData.isString() && newData.val().length <= 270" },
-          "sonSayi": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90" },
-          "cekildi": { ".validate": "newData.isNumber()" },
-          "$baska": { ".validate": false }
-        },
-
-        "kazananlar": {
-          // Kazananları yalnızca host yazar; istemcinin iddiası tek başına yeterli değildir.
-          ".write": "auth != null && root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid",
-          "cinko1": { ".validate": "newData.isString() && newData.val().length <= 300" },
-          "cinko2": { ".validate": "newData.isString() && newData.val().length <= 300" },
-          "tombala": { ".validate": "newData.isString() && newData.val().length <= 300" },
-          "$baska": { ".validate": false }
-        },
-
-        "ilanlar": {
-          ".write": "auth != null && root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid",
-          "$uid": {
-            // Oyuncu kendi ilanını açar, host karara bağlar. Yazma izni üst
-            // düğümde verildiği için oyuncu kendi gecerli alanına da yazabilir;
-            // bu yalnızca kendi ilanını geçersiz kılar, kazanmaya yaramaz.
-            ".write": "auth != null && ($uid === auth.uid || root.child('odalar/' + $kod + '/meta/hostId').val() === auth.uid)",
-            "tur": { ".validate": "newData.val() === 'cinko1' || newData.val() === 'cinko2' || newData.val() === 'tombala'" },
-            "cekilisNo": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 90" },
-            "zaman": { ".validate": "newData.isNumber()" },
-            "gecerli": { ".validate": "newData.isBoolean()" },
-            "sebep": { ".validate": "newData.isString() && newData.val().length <= 120" },
-            "$baska": { ".validate": false }
-          }
-        },
-
-        "$baska": { ".validate": false }
+        "$other":{".validate":false}
       }
     }
   }

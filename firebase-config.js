@@ -1,10 +1,4 @@
-// firebase-config.js — Firebase ayarları.
-//
-// Bu dosya bilerek repoda: GitHub Pages'te çevrimiçi modun çalışması için
-// gerekiyor. Web API anahtarı gizli bir değer değildir, zaten her tarayıcıya
-// gönderilir. Odaları koruyan iki şey var:
-//   1. database.rules.json'un Firebase'e yüklenmiş olması,
-//   2. Authentication → Settings → Authorized domains listesi.
+// Mevcut projenin herkese açık Firebase web yapılandırması.
 export const firebaseConfig = {
   apiKey: 'AIzaSyAvW4EQlwhK-xZTYIMCcdbm5BXkwdkEHwc',
   authDomain: 'tombala-3d421.firebaseapp.com',
