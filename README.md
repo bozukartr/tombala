@@ -18,6 +18,9 @@
 
 ## İlk kurulum: Firebase kurallarını yayımla
 
+Telefondan: oyunun yayımlandığı adreste `kurulum.html` sayfasını aç. “Kuralları kopyala” düğmesine dokun, Firebase panelinde Realtime Database → Kurallar bölümündeki metni değiştirip yayımla ve kurulum sayfasına dön. Son adımdaki kontrol yalnızca anonim giriş ve oda okuma iznini sınar; yazma izni oyunda oda oluştururken doğrulanır. Kurulum ekranı herhangi bir oda oluşturmaz ve Firebase'e yönetici olarak giriş yapmaz.
+
+
 `firebase-config.js`, mevcut `tombala-3d421` projesinin herkese açık web yapılandırmasını içerir. Web API anahtarı bir yönetici parolası değildir. Erişimi veritabanı kuralları sağlar.
 
 **Yeni 3×10 kart sürümü `tombalaV3` yolunu kullanır; eski 3×9 odalarla karışmaması için odalar yeniden kurulmalıdır. Eski kurallar bu yolu kapattığından aşağıdaki kurallar dağıtılmadan çevrimiçi oda kurulamaz.**

@@ -1,5 +1,11 @@
 # Sürüm kaydı
 
+## 2.1.1 — 2026-11-05
+
+- Telefonda kuralları kopyalama, Firebase paneline geçiş ve salt okuma bağlantı kontrolü için `kurulum.html` eklendi.
+- Oda erişimi reddedildiğinde ana ekrandaki hata artık kurulum rehberine yönlendirir.
+- Canlı arayüzün yayımlandığı doğrulandı; Firebase kurallarını yayımlamak için hâlâ proje yöneticisi oturumu gerekiyor.
+
 ## 2.1.0 — 2026-11-05
 
 - Kartlar 3×10 dönüşümlü yerleşime geçti: sütunlarda sırasıyla 2 ve 1 sayı, her satırda 5 sayı, toplam 15 sayı. Kullanıcının örneğindeki ilk iki satır üçüncü satıra genişletildi.
