@@ -1,5 +1,5 @@
-import {newRoom,newPlayer,members,randomInt} from './core.js';
-export const ROOM_BASE='tombalaV3';
+import {newRoom,newPlayer,members,randomInt,markNumber,markedNumbers} from './core.js';
+export const ROOM_BASE='tombalaV4';
 const expired=room=>!room?.meta||Date.now()-room.meta.createdAt>21600000;
 // Aynı kod veya koltuk için yarışan istemciler sunucudan gelen güncel durumu
 // yeniden okur. PERMISSION_DENIED gerçek bir doluluk yarışından da gelebilir.
@@ -27,7 +27,7 @@ export async function reserveSeat(api,db,uid,code,name) {
   for(let slot=0;slot<4;slot++) {
     if(room.players?.[slot])continue;
     try {
-      const result=await api.runTransaction(api.ref(db,`${ROOM_BASE}/${code}/players/${slot}`),old=>old?undefined:player,{applyLocally:false});
+      const result=await api.runTransaction(api.ref(db,`${ROOM_BASE}/${code}/players/${slot}`),old=>old?undefined:{...player,color:slot,cardNo:slot+1},{applyLocally:false});
       if(result.committed)return code;
     }catch(error){
       room=(await api.get(target)).val();
@@ -37,4 +37,14 @@ export async function reserveSeat(api,db,uid,code,name) {
     }
   }
   throw new Error('Masa dolu. Bu odada en fazla 4 kişi oynayabilir.');
+}
+
+export async function commitMark(api,db,uid,code,number){
+ const result=await api.runTransaction(api.ref(db,`${ROOM_BASE}/${code}`),room=>{
+  if(!room)return room;
+  const p=members(room).find(([,p])=>p.uid===uid)?.[1];
+  if(!p||room.meta.phase!=='playing'||markedNumbers(p).includes(number))return;
+  return markNumber(room,uid,number);
+ },{applyLocally:false});
+ return result.committed;
 }

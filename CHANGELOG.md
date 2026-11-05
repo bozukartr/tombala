@@ -1,5 +1,14 @@
 # Sürüm kaydı
 
+## 3.0.0 — 2026-11-06
+
+- Beş gerçek kart referansına göre 3×9 yerleşim; orta solda ayrı kart kimliği, satırda 5 ve toplam 15 oyun sayısı. Sütun içi sıralama zorunluluğu kaldırıldı.
+- Tüm oyuncuların kartları ve manuel işaretlemeleri ortak masada canlı gösterilir; yalnızca kart sahibi işaretleyebilir.
+- Otomatik işaretleme kaldırıldı. İşaretleme, sıra ve ilk çinko/tombala kararı aynı Firebase transaction'ında doğrulanır.
+- Ortak kazanan yerine ilk tamamlayıcı işlemi kaydedilen oyuncu kazanır. Tüm ekranlarda animasyonlu ödül bildirimi ve kart/satır vurgusu eklendi.
+- Yeni veri modeli `tombalaV4` kullanır; güncel Firebase kuralları yayımlanmalı ve odalar yeniden kurulmalıdır.
+- Doğrulama: 9 oyun/olay testi ve 12 Firebase Emulator testi; 320×667, 390×844 ve 430×932 mobil kontrolleri, manuel çinko/tombala ve tekrar lobiye dönüş.
+
 ## 2.1.1 — 2026-11-05
 
 - Telefonda kuralları kopyalama, Firebase paneline geçiş ve salt okuma bağlantı kontrolü için `kurulum.html` eklendi.
