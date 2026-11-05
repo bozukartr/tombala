@@ -1,5 +1,14 @@
 # Sürüm kaydı
 
+## 2.1.0 — 2026-11-05
+
+- Kartlar 3×10 dönüşümlü yerleşime geçti: sütunlarda sırasıyla 2 ve 1 sayı, her satırda 5 sayı, toplam 15 sayı. Kullanıcının örneğindeki ilk iki satır üçüncü satıra genişletildi.
+- Özel kart düzenleyicisinde boş kareler sabit; sütun aralıkları ve 90 sütunu korunuyor.
+- Web sayfası düzeni yerine tam ekran mobil oyun kabuğu, sabit aksiyon alanı, yatay oyuncular, çekiliş sahnesi ve alttan açılan çekmeceler eklendi.
+- PNG ana ekran ikonları ve davet bağlantısıyla oda kodunu paylaşma eklendi.
+- Doğrulama: 6 oyun testi ve 7 Firebase Emulator testi; 320×667, 390×844 ve 430×932 ekran kontrolleri, özel kart kaydetme ve tekrar lobiye dönüş.
+- Kart şeması değiştiği için yeni odalar `tombalaV3` yolunu kullanır. Güncel `database.rules.json` Firebase'e yayımlanmalıdır; eski odalar yeniden kurulmalıdır.
+
 ## 2.0.0 — 2026-11-05
 
 Tombala HTML, CSS ve JavaScript ile sıfırdan yenilendi.

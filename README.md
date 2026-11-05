@@ -2,23 +2,25 @@
 
 2–4 kişilik, Türkçe, ailece oynanan çevrimiçi tombala. Sıfırdan HTML, CSS ve JavaScript; derleme veya arayüz çatısı gerektirmez.
 
+![Mobil oyun önizlemesi](docs/mobile-preview.png)
+
 ## Oyun
 
 - Firebase Authentication ile otomatik anonim giriş.
 - Transaction ile ayrılan dört haneli oda kodu ve dört koltuk.
 - Lobide rastgele kart, üç kart arasından seçim veya kendi kartını oluşturma.
-- Standart 3×9 kart: 15 benzersiz sayı, satır başına 5 sayı, sütunlara göre sayı aralıkları.
+- Dönüşümlü 3×10 kart: ilk ve üçüncü satır sayı/boş, ikinci satır boş/sayı. Sütunlar sırasıyla 2 ve 1 sayı taşır; her satırda 5, toplam 15 benzersiz sayı bulunur. 10. sütun 90 sayısına ayrılır.
 - Herkes hazırsa oda sahibi başlatır. Sayıları elle veya beş saniyede bir otomatik çeker.
 - Sayılar otomatik işaretlenir; 1. çinko, 2. çinko ve tombala otomatik hesaplanır. Aynı çekilişte bitirenler birlikte kazanır.
 - “Tekrar oyna” aynı odanın lobisine döndürür. Herkes yeniden hazır olmalıdır.
 - Bağlantı kesilince çevrimdışı durumu; kalan oyuncunun oda sahipliğini devralabilmesi; sayfa yenilemede oturuma dönüş.
-- Mobil ekranlara uyumlu arayüz ve ana ekrana eklemeye uygun manifest.
+- Tam ekran mobil oyun kabuğu: sabit üst çubuk, altta başparmak erişimli ana aksiyonlar, yatay oyuncu listesi, çekiliş sahnesi ve alttan açılan kart/sayı çekmeceleri. PNG uygulama ikonlarıyla ana ekrana eklemeye uygun manifest.
 
 ## İlk kurulum: Firebase kurallarını yayımla
 
 `firebase-config.js`, mevcut `tombala-3d421` projesinin herkese açık web yapılandırmasını içerir. Web API anahtarı bir yönetici parolası değildir. Erişimi veritabanı kuralları sağlar.
 
-**Yeni oyun `tombalaV2` yolunu kullanır. Eski kurallar bu yolu kapattığından aşağıdaki kurallar dağıtılmadan çevrimiçi oda kurulamaz.**
+**Yeni 3×10 kart sürümü `tombalaV3` yolunu kullanır; eski 3×9 odalarla karışmaması için odalar yeniden kurulmalıdır. Eski kurallar bu yolu kapattığından aşağıdaki kurallar dağıtılmadan çevrimiçi oda kurulamaz.**
 
 ```sh
 npm install
@@ -32,7 +34,7 @@ Firebase Console → Authentication → Sign-in method → Anonymous açık olma
 
 Kurallar oda listesini kapatır, oda kodu bilen oturumlara okumayı açar, koltuk sayısını dört ile sınırlar, diğer oyuncunun kartına yazmayı ve oyun esnasında kart değiştirmeyi engeller. Çekilişi ve sonuçları oda sahibi yönetir; bu aile oyunu için güvenilen istemcidir. Rekabetçi/ödüllü kullanım için sunucu tarafında hakem gerekir.
 
-Odalar altı saat geçerli. Süresi dolan kayıtlar kodu yeniden kullanmamak için otomatik üzerine yazılmaz. Uzun vadede zamanlanmış bir yönetici göreviyle eski `tombalaV2` kayıtları temizlenebilir.
+Odalar altı saat geçerli. Süresi dolan kayıtlar kodu yeniden kullanmamak için otomatik üzerine yazılmaz. Uzun vadede zamanlanmış bir yönetici göreviyle eski `tombalaV3` kayıtları temizlenebilir.
 
 ## Yayınlama
 
@@ -57,4 +59,6 @@ npm test
 npm run test:database
 ```
 
-Oyun testleri 1.000 geçerli kartı, 100 tam turu, oyuncu/hazır sınırlarını, birlikte kazanmayı ve tekrar lobiye dönüşü doğrular. Firebase Emulator testleri gerçek veritabanı kurallarını; oturumsuz erişimi, kod ve koltuk çakışmalarını, beşinci oyuncuyu, kart kilidini, oda sahibi devrini ve yeni turu sınar. Emülatör testleri `demo-tombala` projesinde çalışır, canlı veritabanına yazmaz.
+Oyun testleri örnekteki dönüşümlü düzeni, sütun başına 2/1 sayı kuralını, 1.000 geçerli kartı, 100 tam turu, oyuncu/hazır sınırlarını, birlikte kazanmayı ve tekrar lobiye dönüşü doğrular. Firebase Emulator testleri gerçek veritabanı kurallarını; oturumsuz erişimi, kod ve koltuk çakışmalarını, beşinci oyuncuyu, kart kilidini, eski kart biçiminin ve yanlış boşlukların reddini, oda sahibi devrini ve yeni turu sınar. Emülatör testleri `demo-tombala` projesinde çalışır, canlı veritabanına yazmaz.
+
+Önizleme: `?demo=1&scene=lobby`, `?demo=1&scene=game` ve `?demo=1&scene=results` yalnızca bellekte örnek veriyle ilgili ekranı açar.

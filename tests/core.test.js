@@ -1,11 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {makeCard,validateCard,encodeCard,decodeCard,newRoom,newPlayer,startRound,drawNext,drawnNumbers,resetRound,progress,canStart} from '../core.js';
-test('1000 kart: 3×9, her satır 5 sayı, sütun aralığı, benzersizlik ve sıralama',()=>{
- for(let i=0;i<1000;i++){const card=makeCard();assert.equal(validateCard(card),'');assert.deepEqual(decodeCard(encodeCard(card)),card);}
+import {makeCard,validateCard,encodeCard,decodeCard,newRoom,newPlayer,startRound,drawNext,drawnNumbers,resetRound,progress,canStart,CARD_SIZE,CARD_COLUMNS,hasCardNumber} from '../core.js';
+test('1000 kart: 3×10, her satır 5 sayı, sütun aralığı, benzersizlik ve sıralama',()=>{
+ for(let i=0;i<1000;i++){const card=makeCard();assert.equal(validateCard(card),'');assert.equal(card.length,30);for(let c=0;c<10;c++)assert.equal([card[c],card[10+c],card[20+c]].filter(Boolean).length,c%2===0?2:1);for(let i=0;i<30;i++)assert.equal(Boolean(card[i]),hasCardNumber(i));assert.deepEqual(decodeCard(encodeCard(card)),card);}
 });
 test('Hatalı özel kartlar reddedilir',()=>{
- const card=makeCard();assert.ok(validateCard(Array(27).fill(0)));
+ const card=makeCard();assert.ok(validateCard(Array(CARD_SIZE).fill(0)));
  const duplicate=[...card],numbers=card.flatMap((n,i)=>n?[i]:[]);duplicate[numbers[1]]=duplicate[numbers[0]];assert.ok(validateCard(duplicate));
  const wrong=[...card];wrong[numbers[0]]=91;assert.ok(validateCard(wrong));
  assert.ok(validateCard(card.slice(1)));
@@ -33,4 +33,13 @@ test('100 tam oyun: tekrarsız 1–90 çekiliş, doğru çinko ve tombala, lobiy
 test('Aynı sayıda bitirenler tombalayı paylaşır',()=>{
  const room=table(2);room.players[1].card=room.players[0].card;startRound(room);while(room.meta.phase==='playing')drawNext(room);
  assert.deepEqual(JSON.parse(room.game.awards).tombala.uids,['host','p1']);
+});
+
+test('Örnekteki dönüşümlü yerleşim geçerli; kaydırılmış boşluk ve eski 3×9 kart reddedilir',()=>{
+ const sample=[1,0,22,0,45,0,60,0,84,0,0,14,0,37,0,52,0,70,0,90,8,0,29,0,49,0,69,0,88,0];
+ assert.equal(validateCard(sample),'');
+ const wrong=[...sample];[wrong[0],wrong[1]]=[wrong[1],wrong[0]];assert.match(validateCard(wrong),/dönüşümlü/);
+ assert.ok(validateCard(Array(27).fill(0)));
+ assert.deepEqual(progress(sample,sample.slice(0,10).filter(Boolean)),{hits:5,rows:1});
+ assert.deepEqual(progress(sample,sample.slice(0,20).filter(Boolean)),{hits:10,rows:2});
 });
