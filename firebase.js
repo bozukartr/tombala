@@ -27,12 +27,12 @@ export const code=()=>roomCode;
 export async function create(name) {
   await connect();
   roomCode=await reserveRoom(api,db,user.uid,name).catch(e=>{throw friendly(e)});
-  sessionStorage.setItem('tombala-room',roomCode);return roomCode;
+  sessionStorage.setItem('tombala-room-v3',roomCode);return roomCode;
 }
 export async function join(next,name) {
   await connect();
   roomCode=await reserveSeat(api,db,user.uid,next,name).catch(e=>{throw friendly(e)});
-  sessionStorage.setItem('tombala-room',roomCode);return roomCode;
+  sessionStorage.setItem('tombala-room-v3',roomCode);return roomCode;
 }
 export async function watch(onRoom,onConnection,onError) {
   unsubscribe?.();stopPresence?.();
@@ -86,11 +86,11 @@ export async function leave(room) {
     }else await api.set(presence,false);
   }
   unsubscribe?.();stopPresence?.();unsubscribe=null;stopPresence=null;
-  await api.onDisconnect(presence).cancel();presence=null;roomCode=null;sessionStorage.removeItem('tombala-room');
+  await api.onDisconnect(presence).cancel();presence=null;roomCode=null;sessionStorage.removeItem('tombala-room-v3');
 }
 
 export async function abandon() {
   unsubscribe?.();stopPresence?.();unsubscribe=null;stopPresence=null;
   if(presence){await api.onDisconnect(presence).cancel().catch(()=>{});presence=null;}
-  roomCode=null;sessionStorage.removeItem('tombala-room');
+  roomCode=null;sessionStorage.removeItem('tombala-room-v3');
 }

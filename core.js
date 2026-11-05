@@ -13,40 +13,43 @@ export function shuffle(values) {
   return a;
 }
 export const range = n => Array.from({length:n}, (_,i)=>i);
-export const columnRange = c => [c === 0 ? 1 : c * 10, c === 8 ? 90 : c * 10 + 9];
+export const CARD_ROWS = 3;
+export const CARD_COLUMNS = 10;
+export const CARD_SIZE = CARD_ROWS * CARD_COLUMNS;
+export const columnRange = c => c === 9 ? [90,90] : [c === 0 ? 1 : c*10, c*10+9];
+// İlk ve üçüncü satır: sayı/boş. İkinci satır: boş/sayı.
+// Sütunlar 2,1,2,1… sayı taşır; her satırda 5, kartta toplam 15 sayı vardır.
+export const hasCardNumber = index => (Math.floor(index/CARD_COLUMNS)+index%CARD_COLUMNS)%2 === 0;
 export function makeCard() {
-  // Her satırda 5 sayı, her sütunda en az bir sayı. Sütunlar yukarıdan aşağı sıralı.
-  let positions;
-  do { positions = range(3).map(() => shuffle(range(9)).slice(0,5)); }
-  while (range(9).some(c => !positions.some(row => row.includes(c))));
-  const card = Array(27).fill(0);
-  range(9).forEach(c => {
+  const card = Array(CARD_SIZE).fill(0);
+  range(CARD_COLUMNS).forEach(c => {
     const [lo,hi] = columnRange(c);
-    const rows = range(3).filter(r => positions[r].includes(c));
-    const nums = shuffle(range(hi-lo+1).map(n => n+lo)).slice(0,rows.length).sort((a,b)=>a-b);
-    rows.forEach((r,i) => card[r*9+c] = nums[i]);
+    const rows=range(CARD_ROWS).filter(r=>hasCardNumber(r*CARD_COLUMNS+c));
+    const nums=shuffle(range(hi-lo+1).map(n=>n+lo)).slice(0,rows.length).sort((a,b)=>a-b);
+    rows.forEach((r,i)=>card[r*CARD_COLUMNS+c]=nums[i]);
   });
   return card;
 }
 export const encodeCard = card => card.join(',');
 export const decodeCard = value => typeof value === 'string' ? value.split(',').map(Number) : [];
 export function validateCard(card) {
-  if (card.length !== 27 || card.some(n=>!Number.isInteger(n)||n<0||n>90)) return 'Sayılar 1–90 arasında olmalı.';
-  if (range(3).some(r => card.slice(r*9,r*9+9).filter(Boolean).length !== 5)) return 'Her satırda tam 5 sayı olmalı.';
-  const nums = card.filter(Boolean);
-  if (new Set(nums).size !== 15) return 'Aynı sayı birden fazla kullanılamaz.';
-  for (let c=0;c<9;c++) {
-    const [lo,hi] = columnRange(c);
-    const col = range(3).map(r=>card[r*9+c]).filter(Boolean);
-    if (!col.length) return 'Her sütunda en az bir sayı olmalı.';
-    if (col.some((n,i)=>n<lo||n>hi||(i>0&&n<=col[i-1]))) return `${c+1}. sütun ${lo}–${hi} aralığında, yukarıdan aşağı artan olmalı.`;
+  if(card.length!==CARD_SIZE) return 'Kart 3 satır ve 10 sütundan oluşmalı.';
+  if(card.some(n=>!Number.isInteger(n)||n<0||n>90))return 'Sayılar 1–90 arasında olmalı.';
+  if(card.some((n,i)=>n&&!hasCardNumber(i)))return 'Sayılar ve boş kareler dönüşümlü dizilmeli. Boş kareler sabittir.';
+  if(card.some((n,i)=>hasCardNumber(i)&&!n))return 'Her satırdaki 5 sayı alanını doldur.';
+  if(range(CARD_ROWS).some(r=>card.slice(r*CARD_COLUMNS,(r+1)*CARD_COLUMNS).filter(Boolean).length!==5))return 'Her satırda tam 5 sayı olmalı.';
+  if(new Set(card.filter(Boolean)).size!==15)return 'Aynı sayı birden fazla kullanılamaz.';
+  for(let c=0;c<CARD_COLUMNS;c++){
+    const [lo,hi]=columnRange(c);
+    const col=range(CARD_ROWS).map(r=>card[r*CARD_COLUMNS+c]).filter(Boolean);
+    if(col.some((n,i)=>n<lo||n>hi||(i>0&&n<=col[i-1])))return `${c+1}. sütun ${lo}–${hi} aralığında, yukarıdan aşağı artan olmalı.`;
   }
   return '';
 }
 export const drawnNumbers = game => game?.drawn ? game.drawn.split(',').map(Number) : [];
 export function progress(card, drawn) {
   const set = new Set(drawn);
-  const rows = range(3).map(r=>card.slice(r*9,r*9+9).filter(Boolean));
+  const rows = range(CARD_ROWS).map(r=>card.slice(r*CARD_COLUMNS,(r+1)*CARD_COLUMNS).filter(Boolean));
   return { hits:card.filter(n=>n&&set.has(n)).length, rows:rows.filter(row=>row.length===5&&row.every(n=>set.has(n))).length };
 }
 export const members = room => Object.entries(room?.players || {}).filter(([,p])=>p).sort((a,b)=>Number(a[0])-Number(b[0]));

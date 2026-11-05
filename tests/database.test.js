@@ -15,17 +15,17 @@ before(async()=>{if(enabled)env=await initializeTestEnvironment({projectId:'demo
 after(async()=>{listeners.forEach(stop=>stop());await env?.cleanup();});
 const db=uid=>uid?env.authenticatedContext(uid).database():env.unauthenticatedContext().database();
 let counter=1100;
-async function table(){const code=String(counter++),host=db('host'),p2=db('p2'),path=`tombalaV2/${code}`;await assertSucceeds(set(ref(host,path),newRoom('host','Burak')));await assertSucceeds(set(ref(p2,path+'/players/1'),newPlayer('p2','Deniz',1)));return{code,path,host,p2};}
+async function table(){const code=String(counter++),host=db('host'),p2=db('p2'),path=`tombalaV3/${code}`;await assertSucceeds(set(ref(host,path),newRoom('host','Burak')));await assertSucceeds(set(ref(p2,path+'/players/1'),newPlayer('p2','Deniz',1)));return{code,path,host,p2};}
 const t=(name,fn)=>test(name,{skip:!enabled,timeout:20000},fn);
 t('RTDB: anonim kimlik gerekli, oda listesi kapalı, kod 4 haneli',async()=>{
- await assertFails(get(ref(db(),'tombalaV2/1111')));
- await assertFails(get(ref(db('host'),'tombalaV2')));
- await assertFails(set(ref(db('host'),'tombalaV2/12345'),newRoom('host','Burak')));
+ await assertFails(get(ref(db(),'tombalaV3/1111')));
+ await assertFails(get(ref(db('host'),'tombalaV3')));
+ await assertFails(set(ref(db('host'),'tombalaV3/12345'),newRoom('host','Burak')));
  const {path,host}=await table();await assertSucceeds(get(ref(host,path)));
 });
 t('RTDB: aynı oda kodunu iki kişi transaction ile alamaz',async()=>{
  const code=String(counter++),a=db('a'),b=db('b');
- const results=await Promise.allSettled([runTransaction(ref(a,`tombalaV2/${code}`),r=>r?undefined:newRoom('a','A'),{applyLocally:false}),runTransaction(ref(b,`tombalaV2/${code}`),r=>r?undefined:newRoom('b','B'),{applyLocally:false})]);
+ const results=await Promise.allSettled([runTransaction(ref(a,`tombalaV3/${code}`),r=>r?undefined:newRoom('a','A'),{applyLocally:false}),runTransaction(ref(b,`tombalaV3/${code}`),r=>r?undefined:newRoom('b','B'),{applyLocally:false})]);
  assert.equal(results.filter(r=>r.status==='fulfilled'&&r.value.committed).length,1);
 });
 t('RTDB: eşzamanlı koltuk yarışı, 4 kişi sınırı ve başka oyuncuyu değiştirme koruması',async()=>{
@@ -68,9 +68,18 @@ t('RTDB: gerçek oda servisi kod çakışmasından sonra yeniden dener',async()=
  assert.equal(await reserveRoom(api,db('new-host'),'new-host','Yeni',()=>attempt++===0?code:free),free);
 });
 t('RTDB: gerçek oda servisi 4 eşzamanlı katılımda yalnızca 3 boş koltuğu doldurur',async()=>{
- const code=String(counter++),host=db('host');await set(ref(host,`tombalaV2/${code}`),newRoom('host','Burak'));
+ const code=String(counter++),host=db('host');await set(ref(host,`tombalaV3/${code}`),newRoom('host','Burak'));
  const outcomes=await Promise.allSettled(['a','b','c','d'].map(uid=>reserveSeat(api,db(uid),uid,code,uid)));
  assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,3);
- assert.equal(members((await get(ref(host,`tombalaV2/${code}`))).val()).length,4);
+ assert.equal(members((await get(ref(host,`tombalaV3/${code}`))).val()).length,4);
  const denied=outcomes.find(r=>r.status==='rejected');assert.match(denied.reason.message,/dolu/);
+});
+
+t('RTDB: eski kart, kaydırılmış boşluk ve yanlış sütun aralığı reddedilir',async()=>{
+ const {host,path}=await table();const card=makeCard();
+ await assertFails(update(ref(host,path+'/players/0'),{card:Array(27).fill(0).join(',')}));
+ const shifted=[...card];[shifted[0],shifted[1]]=[shifted[1],shifted[0]];
+ await assertFails(update(ref(host,path+'/players/0'),{card:encodeCard(shifted)}));
+ const wrong=[...card];wrong[0]=15;await assertFails(update(ref(host,path+'/players/0'),{card:encodeCard(wrong)}));
+ await assertSucceeds(update(ref(host,path+'/players/0'),{card:encodeCard(card)}));
 });

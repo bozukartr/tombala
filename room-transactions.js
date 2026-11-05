@@ -1,5 +1,5 @@
 import {newRoom,newPlayer,members,randomInt} from './core.js';
-export const ROOM_BASE='tombalaV2';
+export const ROOM_BASE='tombalaV3';
 const expired=room=>!room?.meta||Date.now()-room.meta.createdAt>21600000;
 // Aynı kod veya koltuk için yarışan istemciler sunucudan gelen güncel durumu
 // yeniden okur. PERMISSION_DENIED gerçek bir doluluk yarışından da gelebilir.

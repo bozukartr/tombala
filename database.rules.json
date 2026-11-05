@@ -2,44 +2,85 @@
   "rules": {
     ".read": false,
     ".write": false,
-    "tombalaV2": {
+    "tombalaV3": {
       "$code": {
         ".read": "auth != null && $code.matches(/^[1-9][0-9]{3}$/)",
         ".write": "auth != null && $code.matches(/^[1-9][0-9]{3}$/) && ((!data.exists() && newData.child('meta/hostId').val() === auth.uid && newData.child('players/0/uid').val() === auth.uid && !newData.child('players/1').exists() && !newData.child('players/2').exists() && !newData.child('players/3').exists() && newData.child('meta/phase').val() === 'lobby' && newData.child('meta/round').val() === 1) || (data.child('meta/hostId').val() === auth.uid && data.child('players').exists() && newData.exists()))",
         ".validate": "newData.hasChildren(['meta','players','game']) && newData.child('meta/createdAt').val() > now - 21600000",
         "meta": {
-          ".write": "auth != null && data.exists() && ((!root.child('tombalaV2/'+$code+'/players/0').exists() || root.child('tombalaV2/'+$code+'/players/0/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/0/online').val() === false) && (!root.child('tombalaV2/'+$code+'/players/1').exists() || root.child('tombalaV2/'+$code+'/players/1/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/1/online').val() === false) && (!root.child('tombalaV2/'+$code+'/players/2').exists() || root.child('tombalaV2/'+$code+'/players/2/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/2/online').val() === false) && (!root.child('tombalaV2/'+$code+'/players/3').exists() || root.child('tombalaV2/'+$code+'/players/3/uid').val() !== data.child('hostId').val() || root.child('tombalaV2/'+$code+'/players/3/online').val() === false)) && (root.child('tombalaV2/'+$code+'/players/0/uid').val() === auth.uid || root.child('tombalaV2/'+$code+'/players/1/uid').val() === auth.uid || root.child('tombalaV2/'+$code+'/players/2/uid').val() === auth.uid || root.child('tombalaV2/'+$code+'/players/3/uid').val() === auth.uid) && newData.child('hostId').val() === auth.uid && newData.child('phase').val() === data.child('phase').val() && newData.child('round').val() === data.child('round').val() && newData.child('createdAt').val() === data.child('createdAt').val()",
+          ".write": "auth != null && data.exists() && ((!root.child('tombalaV3/'+$code+'/players/0').exists() || root.child('tombalaV3/'+$code+'/players/0/uid').val() !== data.child('hostId').val() || root.child('tombalaV3/'+$code+'/players/0/online').val() === false) && (!root.child('tombalaV3/'+$code+'/players/1').exists() || root.child('tombalaV3/'+$code+'/players/1/uid').val() !== data.child('hostId').val() || root.child('tombalaV3/'+$code+'/players/1/online').val() === false) && (!root.child('tombalaV3/'+$code+'/players/2').exists() || root.child('tombalaV3/'+$code+'/players/2/uid').val() !== data.child('hostId').val() || root.child('tombalaV3/'+$code+'/players/2/online').val() === false) && (!root.child('tombalaV3/'+$code+'/players/3').exists() || root.child('tombalaV3/'+$code+'/players/3/uid').val() !== data.child('hostId').val() || root.child('tombalaV3/'+$code+'/players/3/online').val() === false)) && (root.child('tombalaV3/'+$code+'/players/0/uid').val() === auth.uid || root.child('tombalaV3/'+$code+'/players/1/uid').val() === auth.uid || root.child('tombalaV3/'+$code+'/players/2/uid').val() === auth.uid || root.child('tombalaV3/'+$code+'/players/3/uid').val() === auth.uid) && newData.child('hostId').val() === auth.uid && newData.child('phase').val() === data.child('phase').val() && newData.child('round').val() === data.child('round').val() && newData.child('createdAt').val() === data.child('createdAt').val()",
           ".validate": "newData.hasChildren(['hostId','phase','round','createdAt'])",
-          "hostId": {".validate":"newData.isString() && newData.val().length > 0 && newData.val().length <= 128"},
-          "phase": {".validate":"newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'"},
-          "round": {".validate":"newData.isNumber() && newData.val() >= 1 && newData.val() <= 10000"},
-          "createdAt": {".validate":"newData.isNumber() && ((!data.exists() && newData.val() <= now + 60000) || newData.val() === data.val())"},
-          "$other":{".validate":false}
+          "hostId": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+          },
+          "phase": {
+            ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'"
+          },
+          "round": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10000"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber() && ((!data.exists() && newData.val() <= now + 60000) || newData.val() === data.val())"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "players": {
           "$slot": {
-            ".write": "auth != null && $slot.matches(/^[0-3]$/) && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby' && ((data.child('uid').val() === auth.uid && (!newData.exists() || newData.child('uid').val() === auth.uid)) || (!data.exists() && newData.child('uid').val() === auth.uid && root.child('tombalaV2/'+$code+'/players/0/uid').val() !== auth.uid && root.child('tombalaV2/'+$code+'/players/1/uid').val() !== auth.uid && root.child('tombalaV2/'+$code+'/players/2/uid').val() !== auth.uid && root.child('tombalaV2/'+$code+'/players/3/uid').val() !== auth.uid))",
+            ".write": "auth != null && $slot.matches(/^[0-3]$/) && root.child('tombalaV3/'+$code+'/meta/phase').val() === 'lobby' && ((data.child('uid').val() === auth.uid && (!newData.exists() || newData.child('uid').val() === auth.uid)) || (!data.exists() && newData.child('uid').val() === auth.uid && root.child('tombalaV3/'+$code+'/players/0/uid').val() !== auth.uid && root.child('tombalaV3/'+$code+'/players/1/uid').val() !== auth.uid && root.child('tombalaV3/'+$code+'/players/2/uid').val() !== auth.uid && root.child('tombalaV3/'+$code+'/players/3/uid').val() !== auth.uid))",
             ".validate": "$slot.matches(/^[0-3]$/) && newData.hasChildren(['uid','name','color','card','readyRound','online','joinedAt'])",
-            "uid":{".validate":"newData.isString() && ((!data.exists() && newData.val() === auth.uid) || newData.val() === data.val())"},
-            "name":{".validate":"newData.isString() && newData.val().length >= 1 && newData.val().length <= 16 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby'))"},
-            "color":{".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() <= 3 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby'))"},
-            "card":{".validate":"newData.isString() && newData.val().matches(/^[0-9]{1,2}(,[0-9]{1,2}){26}$/) && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby' && data.parent().child('readyRound').val() !== root.child('tombalaV2/'+$code+'/meta/round').val()))"},
-            "readyRound":{".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV2/'+$code+'/meta/phase').val() === 'lobby'))"},
-            "online":{".write":"auth != null && data.parent().child('uid').val() === auth.uid", ".validate":"newData.isBoolean()"},
-            "joinedAt":{".validate":"newData.isNumber() && (!data.exists() || newData.val() === data.val())"},
-            "$other":{".validate":false}
+            "uid": {
+              ".validate": "newData.isString() && ((!data.exists() && newData.val() === auth.uid) || newData.val() === data.val())"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV3/'+$code+'/meta/phase').val() === 'lobby'))"
+            },
+            "color": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV3/'+$code+'/meta/phase').val() === 'lobby'))"
+            },
+            "card": {
+              ".validate": "newData.isString() && newData.val().matches(/^[1-9],0,2[0-9],0,4[0-9],0,6[0-9],0,8[0-9],0,0,1[0-9],0,3[0-9],0,5[0-9],0,7[0-9],0,90,[1-9],0,2[0-9],0,4[0-9],0,6[0-9],0,8[0-9],0$/) && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV3/'+$code+'/meta/phase').val() === 'lobby' && data.parent().child('readyRound').val() !== root.child('tombalaV3/'+$code+'/meta/round').val()))"
+            },
+            "readyRound": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val() || (auth.uid === data.parent().child('uid').val() && root.child('tombalaV3/'+$code+'/meta/phase').val() === 'lobby'))"
+            },
+            "online": {
+              ".write": "auth != null && data.parent().child('uid').val() === auth.uid",
+              ".validate": "newData.isBoolean()"
+            },
+            "joinedAt": {
+              ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())"
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         },
         "game": {
-          ".validate":"newData.hasChildren(['drawn','auto','interval','updatedAt','awards'])",
-          "drawn":{".validate":"newData.isString() && newData.val().length <= 270 && (newData.val() === '' || newData.val().matches(/^[1-9][0-9]?(,[1-9][0-9]?){0,89}$/))"},
-          "auto":{".validate":"newData.isBoolean()"},
-          "interval":{".validate":"newData.val() === 5000"},
-          "updatedAt":{".validate":"newData.isNumber()"},
-          "awards":{".validate":"newData.isString() && newData.val().length <= 3000"},
-          "$other":{".validate":false}
+          ".validate": "newData.hasChildren(['drawn','auto','interval','updatedAt','awards'])",
+          "drawn": {
+            ".validate": "newData.isString() && newData.val().length <= 270 && (newData.val() === '' || newData.val().matches(/^[1-9][0-9]?(,[1-9][0-9]?){0,89}$/))"
+          },
+          "auto": {
+            ".validate": "newData.isBoolean()"
+          },
+          "interval": {
+            ".validate": "newData.val() === 5000"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "awards": {
+            ".validate": "newData.isString() && newData.val().length <= 3000"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
-        "$other":{".validate":false}
+        "$other": {
+          ".validate": false
+        }
       }
     }
   }

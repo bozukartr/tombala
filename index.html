@@ -2,26 +2,28 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#f7f5ef">
 <meta name="description" content="Aynı masanın etrafında, nerede olursanız olun. 2–4 kişilik çevrimiçi aile tombalası.">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Tombala">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="styles.css">
 <title>Tombala · Birlikte güzel</title>
 </head>
 <body>
 <div class="app-shell">
-<header class="topbar"><a href="./" class="brand" aria-label="Tombala ana sayfa"><span class="brand-icon">t<span></span></span>tombala<span class="brand-dot">.</span></a><div class="header-actions"><span id="connection" class="connection"><i></i><span>Birlikte güzel</span></span><button id="help-button" class="icon-button" aria-label="Nasıl oynanır?">?</button><button id="sound-button" class="icon-button" aria-label="Sesi aç" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6m0-6-5 6"/></svg></button></div></header>
+<header class="topbar"><div class="brand" aria-label="Tombala"><span class="brand-icon">t<span></span></span>tombala<span class="brand-dot">.</span></div><div class="header-actions"><span id="connection" class="connection"><i></i><span>Birlikte güzel</span></span><button id="help-button" class="icon-button" aria-label="Nasıl oynanır?">?</button><button id="sound-button" class="icon-button" aria-label="Sesi aç" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6m0-6-5 6"/></svg></button></div></header>
 <main id="app" tabindex="-1"></main>
-<footer class="footer"><span>Bir kart, biraz şans, bolca muhabbet.</span><span>2–4 kişi <span class="footer-dot">·</span> 7'den 70'e</span></footer>
+<div id="action-dock" class="action-dock"></div>
 </div>
 <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
-<dialog id="help-dialog"><div class="dialog-head"><span class="eyebrow">HEP BİRLİKTE</span><button class="icon-button" data-close aria-label="Kapat">×</button></div><h2>Bir turda öğrenirsin.</h2><p>Oda kur, dört haneli kodu sevdiklerinle paylaş. Lobide herkes bir kart seçsin ve hazır olsun.</p><ol class="rules-list"><li><b>Sayılar torbadan çıkar.</b><span>Oda sahibi sayıları tek tek veya otomatik çeker. Kartındaki sayılar kendiliğinden işaretlenir.</span></li><li><b>Satırları tamamla.</b><span>Bir tam satır: 1. çinko. İki tam satır: 2. çinko.</span></li><li><b>Ve… tombala!</b><span>15 sayıyı ilk tamamlayan kazanır. Aynı sayıda bitirenler kazanmayı paylaşır.</span></li></ol><p class="small muted">Oyun bitince “Tekrar oyna” ile aynı odanın lobisine dönersiniz. Herkes yeniden kart seçebilir.</p><button class="button primary full" data-close>Anlaştık, başlayalım</button></dialog>
+<dialog id="help-dialog"><div class="dialog-head"><span class="eyebrow">HEP BİRLİKTE</span><button class="icon-button" data-close aria-label="Kapat">×</button></div><h2>Bir turda öğrenirsin.</h2><p>Oda kur, dört haneli kodu sevdiklerinle paylaş. Lobide herkes bir kart seçsin ve hazır olsun.</p><ol class="rules-list"><li><b>Sayılar torbadan çıkar.</b><span>Oda sahibi sayıları tek tek veya otomatik çeker. Kartındaki sayılar kendiliğinden işaretlenir.</span></li><li><b>Satırları tamamla.</b><span>Bir tam satır: 1. çinko. İki tam satır: 2. çinko.</span></li><li><b>Ve… tombala!</b><span>Dönüşümlü karelerden oluşan 3×10 kartındaki 15 sayıyı ilk tamamlayan kazanır. Aynı sayıda bitirenler kazanmayı paylaşır.</span></li></ol><p class="small muted">Oyun bitince “Tekrar oyna” ile aynı odanın lobisine dönersiniz. Herkes yeniden kart seçebilir.</p><button class="button primary full" data-close>Anlaştık, başlayalım</button></dialog>
 <dialog id="card-dialog"></dialog>
+<dialog id="numbers-dialog"></dialog>
 <dialog id="leave-dialog"><div class="dialog-head"><span class="eyebrow">KÜÇÜK BİR MOLA</span><button class="icon-button" data-close aria-label="Kapat">×</button></div><h2>Masadan ayrılıyor musun?</h2><p>Oyun devam ediyorsa kartın bu tur boyunca masada kalır. Diğer oyuncular devam edebilir.</p><div class="dialog-actions"><button class="button secondary" data-close>Masada kal</button><button id="confirm-leave" class="button primary">Ayrıl</button></div></dialog>
 <noscript>Bu oyunu oynamak için tarayıcında JavaScript'i etkinleştir.</noscript>
 <script type="module" src="app.js"></script>
