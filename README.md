@@ -46,6 +46,10 @@ Odalar altı saat geçerlidir. Süresi dolan veriler otomatik üzerine yazılmaz
 
 Dosyalar GitHub Pages veya herhangi bir statik sunucuda repo kökünden yayımlanabilir. JavaScript modülleri HTTP(S) ister.
 
+GitHub Pages yayın kaynağı `main` dalı ve `/(root)` klasörüdür. Kök dizindeki `.nojekyll`, derleme gerektirmeyen HTML/CSS/JS dosyalarının Jekyll işleminden geçirilmeden yayımlanmasını sağlar.
+
+Yayın kontrolünde “Oyun ve Firebase kuralları” testleri ile “pages build and deployment” dağıtımı ayrı ayrı başarılı olmalıdır. Testlerin geçmesi tek başına canlı sitenin güncellendiği anlamına gelmez. Dağıtım hatasında Actions kaydındaki `deploy` adımını kontrol et; son başarılı site sürümü sunulmaya devam edebilir. Firebase kurallarının yayımlanması ayrıca yapılır.
+
 ```sh
 python3 -m http.server 8080
 ```
