@@ -7,12 +7,12 @@
 ## Oyun
 
 - **Üç yol:** Oda kur, dört haneli kodla odaya katıl ya da **Botlarla** hemen başla. Botlarla oyun Firebase gerektirmez, internetsiz de açılır.
-- **Kartlar:** Gerçek kart referanslarındaki 3×9 yerleşim. Sol ortadaki hücre kart kimliğidir; oyun sayısı değildir. Her satırda 5, toplam 15 benzersiz oyun sayısı; sütun başına 1–2 sayı. Aralıklar 1–9, 10–19, …, 70–79 ve 80–90. Lobide kartı yenileme, üç seçenekten seçme ve kendi sayılarını yazma bulunur.
+- **Kartlar:** Gerçek kart referanslarındaki 3×9 yerleşim. Sol ortadaki hücre kart kimliğidir; oyun sayısı değildir. Her satırda 5, toplam 15 benzersiz oyun sayısı; sütun başına 1–2 sayı. Aralıklar 1–9, 10–19, …, 70–79 ve 80–90. Lobide kartı yenileme, üç seçenekten seçme ve **kendi kartını oluşturma** bulunur: boşluk düzenini küçük önizlemelerden seç, karta dokun, alttaki tuş takımından o sütunun sayısını seç. Tuş takımı yalnızca geçerli sayıları gösterir, sıradaki boş kare kendiliğinden seçilir; “Rastgele tamamla” kalanları doldurur. Klavye ve hatalı giriş yoktur.
 - **Çekiliş:** Oda sahibi lobide “Elle · 8 sn · 5 sn · 3 sn” seçer. Otomatik çekilişte topun çevresindeki halka bir sonraki sayıya kalan süreyi gösterir. Oyun sırasında duraklatabilir, hızı değiştirebilir veya istediği an sayı çekebilir.
 - **Manuel işaretleme:** Otomatik işaretleme yoktur. Çıkan bir sayı, oyuncu kendi kartında dokunup kaydedilince bulunmuş sayılır; damga anında görünür, sonuç oda transaction'ından gelir. Henüz çıkmamış sayıya dokunmak titreşim ve uyarı verir.
 - **Ödüller ve puan:** Bir satırı ilk tamamlayan 1. çinkoyu (+1), iki satırı ilk tamamlayan 2. çinkoyu (+2), kartın tamamını ilk işaretleyen tombalayı (+3) alır. Puanlar aynı odada turlar boyunca birikir ve lobide, sonuç ekranında puan tablosu olarak görünür.
 - **Yakın kazanma:** Sıradaki ödüle tek işaret kalan oyuncunun kartında “1 kaldı” rozeti çıkar. Hesap yalnızca oyuncunun kendi işaretlerine bakar; çıkmış ama işaretlenmemiş sayıları ele vermez.
-- **Ortak masa:** Herkes tüm kartları canlı görür. Rakipler, işaretlenen hücreleri renkli gösteren küçük kart haritalarıdır; dokununca kartın tamamı açılır. Yalnızca kendi kartına dokunabilirsin.
+- **Ortak masa:** Herkes tüm kartları canlı görür. Rakiplerin kartları oyun ekranında küçük ama okunur sayılarla, işaretleri oyuncunun renginde görünür; dokununca kart büyür. Çekiliş topu üstte, kendi kartın altta sabit kalır; kısa ekranlarda rakipler ikisinin arasında kayar. Yalnızca kendi kartına dokunabilirsin.
 - **Tepkiler:** 👏 🔥 😮 😂 🙈 tepkileri bütün ekranlarda yükselerek görünür. Botlar da ödüllere tepki verir.
 - **Tur akışı:** Başlangıçta 3-2-1 geri sayımı, ödüllerde bütün ekranlarda bildirim, kazanan kartta parlama ve tombalada konfeti. “Tekrar oyna” aynı odanın lobisine döndürür; işaretler temizlenir, puanlar korunur.
 - Firebase anonim giriş, dört haneli oda kodu, dört koltuk, bağlantı takibi ve oda sahibi devri.

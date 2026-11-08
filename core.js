@@ -29,6 +29,31 @@ export function makeCard(){
  range(CARD_COLUMNS).forEach(c=>{const [lo,hi]=columnRange(c),rows=range(3).filter(r=>mask[r*9+c]);const nums=shuffle(range(hi-lo+1).map(n=>n+lo)).slice(0,rows.length);rows.forEach((r,i)=>card[r*9+c]=nums[i]);});
  return card;
 }
+// Kart düzenleyici yardımcıları: düzen (boşluk deseni) seçimi, sütun sütun taşıma ve rastgele tamamlama.
+export const patternOf=card=>CARD_PATTERNS.findIndex(mask=>mask.every((filled,i)=>filled===Boolean(card[i])));
+export const slotsOf=pattern=>range(CARD_SIZE).filter(i=>CARD_PATTERNS[pattern]?.[i]);
+// Yeni desende sayı aynı satırda yer bulursa orada kalır; kalanlar sütundaki boş karelere
+// yukarıdan aşağı taşınır. Yeni desende yeri olmayan sayı düşer.
+export function applyPattern(cells,pattern){
+ const mask=CARD_PATTERNS[pattern],next=Array(CARD_SIZE).fill(0);
+ for(let c=0;c<CARD_COLUMNS;c++){
+  const rest=[];
+  for(const r of range(3)){const n=cells[r*9+c];if(!n||!inColumn(c,n))continue;if(mask[r*9+c])next[r*9+c]=n;else rest.push(n);}
+  for(const r of range(3))if(mask[r*9+c]&&!next[r*9+c]&&rest.length)next[r*9+c]=rest.shift();
+ }
+ return next;
+}
+const inColumn=(c,n)=>{const[lo,hi]=columnRange(c);return n>=lo&&n<=hi;};
+// Desendeki boş karelere, sütun aralığından o sütunda kullanılmamış sayılar konur.
+export function fillCard(cells,pattern){
+ const mask=CARD_PATTERNS[pattern],next=[...cells];
+ for(let c=0;c<CARD_COLUMNS;c++){
+  const[lo,hi]=columnRange(c),used=new Set(range(3).map(r=>next[r*9+c]).filter(Boolean));
+  const free=shuffle(range(hi-lo+1).map(n=>n+lo).filter(n=>!used.has(n)));
+  for(const r of range(3))if(mask[r*9+c]&&!next[r*9+c])next[r*9+c]=free.pop();
+ }
+ return next;
+}
 export const encodeCard=card=>card.join(',');
 export const decodeCard=value=>typeof value==='string'?value.split(',').map(Number):[];
 export function cardPatch(card){return{card:encodeCard(card),row0:encodeCard(card.slice(0,9)),row1:encodeCard(card.slice(9,18)),row2:encodeCard(card.slice(18,27))};}

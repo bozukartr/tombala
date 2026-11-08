@@ -1,6 +1,6 @@
 // Ağ öncelikli önbellek: çevrimiçiyken her zaman güncel dosyalar gelir, bağlantı yoksa son
 // başarılı kopya açılır. Böylece botlarla oyun çevrimdışı da başlar. Firebase isteklerine dokunulmaz.
-const CACHE='tombala-4.0.0';
+const CACHE='tombala-4.1.0';
 const SHELL=['./','index.html','styles.css','app.js','core.js','game-events.js','fx.js','solo.js','room-transactions.js','firebase.js','firebase-config.js','icon.svg','manifest.webmanifest','icons/icon-192.png','icons/icon-180.png'];
 const FONT_HOSTS=['fonts.googleapis.com','fonts.gstatic.com'];
 self.addEventListener('install',event=>{

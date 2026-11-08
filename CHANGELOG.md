@@ -1,5 +1,12 @@
 # Sürüm kaydı
 
+## 4.1.0 — 2026-11-08
+
+- Kendi kartını oluşturma baştan tasarlandı: 15 sayı kutusuna klavyeyle yazmak yerine karta dokunup alttaki tuş takımından seçiliyor. Tuş takımı yalnızca o sütunun aralığını gösterir, sütunda kullanılan sayılar soluk ve seçilemez, silme tuşu vardır; sıradaki boş kare kendiliğinden seçilir. Dört boşluk düzeni küçük önizlemelerle seçilir; düzen değişince sayılar mümkün olduğunca yerinde kalır. “Rastgele tamamla”, “Temizle” ve kalan kare sayacı eklendi; geçersiz kart oluşturmak mümkün değil.
+- Oyun ekranında rakiplerin kartları dokunmadan görünür: her rakip için sayıların okunduğu tam genişlikte küçük kart, işaretler oyuncunun renginde. Tamamlanan satır ödül anında rakip kartında da parlar.
+- Ödül kartları tek satıra indi. Çekiliş topu üstte, kendi kartın altta sabit; kısa ekranlarda rakipler ikisinin arasında kayar, 390×844 ekranda her şey kaydırmadan sığar.
+- Doğrulama: 21 oyun/olay/bot testi (yeni: kart düzenleyici yardımcıları 500 rastgele kartla). Tarayıcıda 320×568, 375×667, 390×664, 390×844 ve 430×932 ekranlarda açık/koyu tema; kart oluşturma akışı (temizle, seç, düzen değiştir, rastgele tamamla, sil, kaydet) ve kaydedilen kartın lobide aynen görünmesi; botlarla tam tur; emülatöre bağlı iki tarayıcıyla çevrimiçi tur. Firebase kuralları ve veri modeli değişmedi.
+
 ## 4.0.0 — 2026-11-08
 
 - Arayüz baştan tasarlandı: sade tasarım belirteçleri, Manrope yazı tipi, büyük dokunma alanları, sistemle uyumlu açık/koyu tema ve elle tema seçimi. Önceki sürümdeki 5–9 px'lik metinler okunur boyutlara büyütüldü; yalnızca kart kimliği ve sütun aralığı etiketleri küçük kalır.
