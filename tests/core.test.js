@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {makeCard,validateCard,cardPatch,decodeCard,newRoom,newPlayer,startRound,drawNext,drawnNumbers,markedNumbers,resetRound,progress,canStart,markNumber,CARD_PATTERNS,range,numberWord,remainingFor,nextStage,emptyAwards,STAGE_POINTS,standings,setPace,DEFAULT_PACE} from '../core.js';
+import {makeCard,validateCard,cardPatch,decodeCard,newRoom,newPlayer,startRound,drawNext,drawnNumbers,markedNumbers,resetRound,progress,canStart,markNumber,CARD_PATTERNS,range,numberWord,remainingFor,nextStage,emptyAwards,STAGE_POINTS,standings,setPace,DEFAULT_PACE,patternOf,slotsOf,applyPattern,fillCard,columnRange} from '../core.js';
 const sample=[1,0,24,0,43,0,62,70,0,0,14,0,33,0,54,0,75,85,4,0,29,0,45,0,69,0,81];
 function table(){const r=newRoom('host','Burak');r.players[1]=newPlayer('p2','Deniz',1);for(const p of Object.values(r.players))p.readyRound=1;return r;}
 function allDrawn(r){while(drawnNumbers(r.game).length<90)drawNext(r);return r;}
@@ -58,4 +58,20 @@ test('Çekiliş hızı oda ayarıdır; tur başında ve tekrar oynamada korunur'
  Object.assign(r.players[1],cardPatch(sample));for(const n of sample.filter(Boolean))markNumber(r,'p2',n);
  assert.throws(()=>setPace(r,3000),/tamamlandı/);resetRound(r);assert.equal(r.game.interval,5000);assert.equal(r.game.auto,false);
  setPace(r,0);for(const p of Object.values(r.players))p.readyRound=r.meta.round;startRound(r);assert.equal(r.game.auto,false);assert.equal(r.game.interval,5000,'Elle çekilişte son otomatik aralık saklanır.');
+});
+test('Kart düzenleyici: düzen değişince sayılar sütununda kalır, rastgele tamamlama her zaman geçerli kart verir',()=>{
+ assert.equal(patternOf(Array(27).fill(0)),-1);
+ for(let i=0;i<500;i++){
+  const card=makeCard(),own=patternOf(card);assert.ok(own>=0);assert.equal(slotsOf(own).length,15);
+  assert.deepEqual(applyPattern(card,own),card,'Aynı düzende kart değişmez.');
+  for(let q=0;q<CARD_PATTERNS.length;q++){
+   const moved=applyPattern(card,q);
+   moved.forEach((n,k)=>{if(!n)return;assert.ok(CARD_PATTERNS[q][k],'Sayı yalnızca desendeki kareye konur.');const[lo,hi]=columnRange(k%9);assert.ok(n>=lo&&n<=hi);assert.ok(card.includes(n));});
+   assert.ok(moved.filter(Boolean).length>=12);
+   const partial=moved.map((n,k)=>k%3===i%3?0:n),full=fillCard(partial,q);
+   assert.equal(validateCard(full),'');assert.equal(patternOf(full),q);
+   partial.forEach((n,k)=>{if(n)assert.equal(full[k],n,'Seçilen sayılar korunur.');});
+  }
+ }
+ assert.equal(validateCard(fillCard(Array(27).fill(0),2)),'');
 });

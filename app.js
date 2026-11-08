@@ -1,8 +1,8 @@
-import {COLORS,COLOR_NAMES,STAGES,STAGE_LABELS,STAGE_POINTS,PACES,REACTIONS,range,makeCard,encodeCard,decodeCard,validateCard,progress,drawnNumbers,markedNumbers,members,canStart,columnRange,CARD_COLUMNS,CARD_SIZE,CARD_ID_INDEX,hasCardNumber,nextStage,remainingFor,numberWord,standings} from './core.js';
+import {COLORS,COLOR_NAMES,STAGES,STAGE_LABELS,STAGE_POINTS,PACES,REACTIONS,range,makeCard,encodeCard,decodeCard,validateCard,progress,drawnNumbers,markedNumbers,members,canStart,columnRange,CARD_COLUMNS,CARD_SIZE,CARD_ID_INDEX,CARD_PATTERNS,nextStage,remainingFor,numberWord,standings,patternOf,slotsOf,applyPattern,fillCard} from './core.js';
 import {createAwardFeed,createReactionFeed} from './game-events.js';
 import {settings,saveSetting,unlockAudio,sfx,callNumber,voiceSupported,voiceStatus,haptics,keepAwake,wakeSupported,confetti} from './fx.js';
 
-const VERSION='4.0.0';
+const VERSION='4.1.0';
 const $=selector=>document.querySelector(selector);
 const app=$('#app'),dock=$('#action-dock'),topbar=$('#topbar'),sheet=$('#sheet');
 const params=new URLSearchParams(location.search);
@@ -41,13 +41,14 @@ const icons={
  tool:svg('<path d="M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5Z"/><path d="M14.5 6.5 17 4l3 3-2.5 2.5"/>'),
  chevron:svg('<path d="m9 5 7 7-7 7"/>'),
  trash:svg('<path d="M4.5 7h15M9.5 7V4.5h5V7m-8 0 1 13h9l1-13"/>'),
+ backspace:svg('<path d="M9 5h10.5A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5H9l-6.5-7L9 5Z"/><path d="m12.5 9.5 5 5m0-5-5 5"/>'),
 };
 const BRAND_MARK='<svg viewBox="0 0 128 128"><path d="M57 27v51.5C57 89 63 95 73 95h5M40 51h37" fill="none" stroke="#fffaf2" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><circle cx="98" cy="93" r="9.5" fill="#ffd380"/></svg>';
 const REACTION_NAMES=['Alkış','Ateş','Şaşkın','Kahkaha','Eyvah'];
 
 let transport=null,room=null,prevRoom=null,connected=false,busy=false,screenKey='',sheetKind=null,sheetArg=null,lastFocus=null;
 let toastTimer,eventTimer,countdownTimer,tickTimer,resultsTimer,ticking=false,trayOpen=false,lastReactionAt=0,resultsHoldUntil=0,statsKey='',ringState={key:'',start:0};
-let customCard=null,choices=[];
+let editor=null,choices=[];
 const awardFeed=createAwardFeed(),reactionFeed=createReactionFeed();
 let eventQueue=[],activeEvent=null,freshAwards=new Set();
 const markPending=new Set(),tapped=new Set();
@@ -95,9 +96,14 @@ function ticket(card,{color=0,marked=[],cardNo=1,interactive=false,compact=false
  }).join('');
  return `<div class="ticket ${COLORS[color]||'sage'}${compact?' compact':''}${flat?' flat':''}" ${uid?`data-player="${escape(uid)}"`:''}>${head}<div class="ticket-grid" role="group" aria-label="${escape(label)}">${cells}</div></div>`;
 }
-function miniGrid(card,marked,fresh){
+// Rakip kartı: sayılar küçük ama okunur; işaretler oyuncunun renginde dolu kare.
+function peerGrid(card,marked,fresh){
  const set=new Set(marked);
- return `<div class="mini-grid" aria-hidden="true">${card.map((n,i)=>i===CARD_ID_INDEX?'<i class="id"></i>':!n?'<i class="b"></i>':set.has(n)?`<i class="h${fresh.has(n)?' new':''}"></i>`:'<i></i>').join('')}</div>`;
+ return `<span class="peer-grid" aria-hidden="true">${card.map((n,i)=>{
+  if(i===CARD_ID_INDEX)return '<i class="id"></i>';
+  if(!n)return '<i class="b"></i>';
+  return `<i data-row="${Math.floor(i/9)}" class="${set.has(n)?`h${fresh.has(n)?' new':''}`:''}">${n}</i>`;
+ }).join('')}</span>`;
 }
 const ballHTML=n=>`<div class="ball${n?' drop':' empty'}"><span class="ball-face">${n||'?'}</span></div>`;
 
@@ -232,7 +238,7 @@ function lobbyCardHTML(){
  const p=self(),ready=p.readyRound===room.meta.round&&!isSolo(),locked=ready?'disabled':'';
  return `<div class="section-head"><h2>Kartın</h2><span>${ready?'Hazırsın · kart kilitli':`Kart ${pad(p.cardNo)}`}</span></div>
  ${ticket(decodeCard(p.card),{color:p.color,cardNo:p.cardNo,label:'Seçtiğin kart'})}
- <div class="tools"><button class="btn btn-secondary" data-action="shuffle" ${locked}>${icons.shuffle} Yenile</button><button class="btn btn-secondary" data-action="choose" ${locked}>${icons.cards} Seç</button><button class="btn btn-secondary" data-action="custom" ${locked}>${icons.edit} Yaz</button></div>
+ <div class="tools"><button class="btn btn-secondary" data-action="shuffle" ${locked}>${icons.shuffle} Yenile</button><button class="btn btn-secondary" data-action="choose" ${locked}>${icons.cards} Seç</button><button class="btn btn-secondary" data-action="custom" ${locked}>${icons.edit} Oluştur</button></div>
  <div class="swatches" role="group" aria-label="Kart rengi"><span class="label">Renk</span>${COLORS.map((c,i)=>`<button class="swatch ${c}" data-action="color" data-color="${i}" aria-label="${COLOR_NAMES[i]}" aria-pressed="${p.color===i}" ${locked}></button>`).join('')}</div>`;
 }
 function roomSettingsHTML(){
@@ -261,7 +267,8 @@ function lobbyDock(){
 // --- Oyun -----------------------------------------------------------------------
 function renderGame(rebuild){
  if(rebuild||!$('#g-stage')){
-  app.innerHTML=`<div class="screen game-screen"><div id="g-note"></div><section class="stage" id="g-stage"><div class="ball-wrap"><div id="g-ring"></div><div id="g-ball"></div></div><div class="stage-info" id="g-info"></div></section><div class="prizes" id="g-prizes"></div><div class="peers" id="g-peers"></div><section class="mine" id="g-mine"></section></div>`;
+  // Top ve kendi kart her zaman görünür kalır; kısa ekranlarda rakipler aralarında kayar.
+  app.innerHTML=`<div class="screen game-screen"><div class="game-top"><div id="g-note"></div><section class="stage" id="g-stage"><div class="ball-wrap"><div id="g-ring"></div><div id="g-ball"></div></div><div class="stage-info" id="g-info"></div></section></div><div class="prizes" id="g-prizes"></div><div class="peers" id="g-peers"></div><div class="game-bottom"><section class="mine" id="g-mine"></section></div></div>`;
  }
  renderTopbar('game');
  const drawn=drawnNumbers(room.game),last=drawn.at(-1)||0;
@@ -296,14 +303,15 @@ function prizesHTML(){
  const next=nextStage(room.game.awards);
  return STAGES.map(key=>{
   const a=room.game.awards[key],p=a.uid&&playerByUid(a.uid);
-  return `<div class="prize${a.uid?' won':''}${key===next&&room.meta.phase==='playing'?' next':''}${a.uid&&freshAwards.has(key)?' fresh':''}"><b>${STAGE_LABELS[key]}<small>+${STAGE_POINTS[key]}</small></b><span>${p?`${avatar(p)}${escape(p.uid===me()?'Sen':p.name)}`:key===next?'Sırada':'—'}</span></div>`;
+  const who=p?(p.uid===me()?'Sen':p.name):'';
+  return `<div class="prize${a.uid?' won':''}${key===next&&room.meta.phase==='playing'?' next':''}${a.uid&&freshAwards.has(key)?' fresh':''}" role="note" aria-label="${STAGE_LABELS[key]}: ${p?escape(who):key===next?'sırada':'henüz yok'}"><b>${STAGE_LABELS[key]}</b>${p?`<span class="who">${avatar(p)}<em>${escape(who)}</em></span>`:`<small>+${STAGE_POINTS[key]}</small>`}</div>`;
  }).join('');
 }
 function peersHTML(){
  return members(room).filter(([,p])=>p.uid!==me()).map(([slot,p])=>{
   const card=decodeCard(p.card),marked=markedNumbers(p),hits=progress(card,marked).hits,{stage,need}=nearFor(p);
   const near=need===1?'<span class="near">1 kaldı</span>':'';
-  return `<button class="peer ${COLORS[p.color]}${p.online?'':' offline'}" data-player="${escape(p.uid)}" data-action="peek" data-slot="${slot}" aria-label="${escape(p.name)}: ${hits}/15 işaretli${need===1?`, ${nearLabel(stage).toLocaleLowerCase('tr')} 1 sayı kaldı`:''}${p.online?'':', çevrimdışı'}"><span class="peer-head">${avatar(p)}<span class="peer-name">${escape(p.name)}</span><span class="peer-count">${hits}</span></span>${miniGrid(card,marked,freshMarks(p))}${near}</button>`;
+  return `<button class="peer ${COLORS[p.color]}${p.online?'':' offline'}" data-player="${escape(p.uid)}" data-action="peek" data-slot="${slot}" aria-label="${escape(p.name)}: ${hits}/15 işaretli${need===1?`, ${nearLabel(stage).toLocaleLowerCase('tr')} 1 sayı kaldı`:''}${p.online?'':', çevrimdışı'}. Kartı büyüt."><span class="peer-id">${avatar(p)}<span class="peer-name">${escape(p.name)}</span><span class="peer-count">${hits}<small>/15</small></span></span>${peerGrid(card,marked,freshMarks(p))}${near}</button>`;
  }).join('');
 }
 function mineHTML(){
@@ -331,7 +339,7 @@ function onDraw(n){
 function paintHighlights(){
  document.querySelectorAll('[data-player]').forEach(el=>{
   const hit=activeEvent?.uid===el.dataset.player;el.classList.toggle('award-flash',hit);
-  el.querySelectorAll('.cell[data-row]').forEach(cell=>cell.classList.toggle('award-cell',hit&&(activeEvent.kind==='tombala'||Number(cell.dataset.row)===activeEvent.row)));
+  el.querySelectorAll('[data-row]').forEach(cell=>cell.classList.toggle('award-cell',hit&&(activeEvent.kind==='tombala'||Number(cell.dataset.row)===activeEvent.row)));
  });
 }
 function clearCelebrations(){clearTimeout(eventTimer);eventQueue=[];activeEvent=null;freshAwards=new Set();$('#celebration').hidden=true;}
@@ -480,11 +488,15 @@ function sheetHTML(kind,arg){
  }
  if(kind==='custom'){
   const p=self();
-  return `${sheetHead('Şansını kendin yaz.','Boş kareler ve kart numarası sabit. Her sütun kendi aralığından sayı alır.')}
-   <form id="custom-form" class="${COLORS[p.color]}"><div class="column-labels" aria-hidden="true">${range(CARD_COLUMNS).map(c=>`<span>${columnRange(c).join('–')}</span>`).join('')}</div>
-   <div class="custom-grid">${customCard.map((n,i)=>hasCardNumber(i,customCard)?`<input type="number" inputmode="numeric" min="${columnRange(i%CARD_COLUMNS)[0]}" max="${columnRange(i%CARD_COLUMNS)[1]}" value="${n||''}" aria-label="${Math.floor(i/CARD_COLUMNS)+1}. satır, ${i%CARD_COLUMNS+1}. sütun, ${columnRange(i%CARD_COLUMNS).join('–')}" data-cell="${i}">`:i===CARD_ID_INDEX?`<span class="custom-id" aria-label="Kart numarası ${p.cardNo}"><small>KART</small>${pad(p.cardNo)}</span>`:'<span class="custom-empty" aria-hidden="true"></span>').join('')}</div>
-   <p id="custom-error" class="inline-error" role="alert" style="margin-top:12px"></p>
-   <div class="sheet-actions"><button type="button" class="btn btn-secondary" data-action="clear-custom">Temizle</button><button type="submit" class="btn btn-primary">Kartımı kullan</button></div></form>`;
+  return `${sheetHead('Kartını oluştur','Bir kareye dokun, alttan sayısını seç. Sıradaki boş kare kendiliğinden seçilir.')}
+   <div class="editor ${COLORS[p.color]}">
+    <div class="editor-row"><span class="label">Düzen</span><div class="layouts" id="ce-layouts" role="group" aria-label="Boş kare düzeni"></div></div>
+    <div id="ce-card"></div>
+    <div id="ce-pad"></div>
+    <div class="editor-tools"><button type="button" class="btn btn-soft btn-sm" data-action="ce-random">${icons.shuffle} Rastgele tamamla</button><button type="button" class="btn btn-soft btn-sm" data-action="ce-clear">Temizle</button></div>
+    <p id="custom-error" class="inline-error" role="alert"></p>
+    <button type="button" class="btn btn-primary full" data-action="ce-save" id="ce-save"></button>
+   </div>`;
  }
  return '';
 }
@@ -558,7 +570,33 @@ async function joinRoom(){
  if($('#join-submit'))$('#join-submit').innerHTML=`Masaya otur ${icons.arrow}`;
 }
 function openChoices(){choices=range(3).map(makeCard);openSheet('choose');}
-function openCustom(){customCard=decodeCard(self().card);openSheet('custom');}
+// --- Kart oluşturma: kareye dokun, sütun aralığındaki sayılardan seç ---
+function openCustom(){
+ const card=decodeCard(self().card),pattern=Math.max(0,patternOf(card));
+ editor={pattern,cells:applyPattern(card,pattern),sel:-1};editor.sel=nextSlot(-1);
+ openSheet('custom');renderEditor();
+}
+// Okuma sırasıyla bir sonraki boş kare; boş kare yoksa seçili kare korunur.
+function nextSlot(from){
+ const slots=slotsOf(editor.pattern),empty=slots.filter(i=>!editor.cells[i]);
+ if(!empty.length)return slots.includes(from)?from:slots[0];
+ return empty.find(i=>i>from)??empty[0];
+}
+function renderEditor(){
+ if(sheetKind!=='custom'||!editor||!$('#ce-card'))return;
+ const p=self(),{pattern,cells,sel}=editor,mask=CARD_PATTERNS[pattern],left=slotsOf(pattern).filter(i=>!cells[i]).length;
+ patch($('#ce-layouts'),CARD_PATTERNS.map((m,q)=>`<button type="button" class="layout" data-action="ce-layout" data-pattern="${q}" aria-pressed="${q===pattern}" aria-label="${q+1}. düzen"><span class="layout-grid" aria-hidden="true">${m.map((filled,i)=>`<i class="${i===CARD_ID_INDEX?'id':filled?'n':''}"></i>`).join('')}</span></button>`).join(''));
+ patch($('#ce-card'),`<div class="ticket ${COLORS[p.color]} editing"><div class="ticket-grid" role="group" aria-label="Oluşturduğun kart">${cells.map((n,i)=>{
+  if(i===CARD_ID_INDEX)return `<span class="cell card-id" aria-hidden="true"><small>KART</small><b>${pad(p.cardNo)}</b></span>`;
+  if(!mask[i])return '<span class="cell blank" aria-hidden="true"></span>';
+  const[lo,hi]=columnRange(i%9);
+  return `<button type="button" class="cell slot${n?'':' empty'}${i===sel?' sel':''}" data-action="ce-select" data-index="${i}" aria-pressed="${i===sel}" aria-label="${Math.floor(i/9)+1}. satır, ${lo}–${hi} sütunu: ${n||'boş'}">${n||''}</button>`;
+ }).join('')}</div></div>`);
+ const c=sel%9,[lo,hi]=columnRange(c),current=cells[sel],used=new Set([0,1,2].map(r=>cells[r*9+c]).filter(n=>n&&n!==current));
+ const nums=range(hi-lo+1).map(n=>n+lo);
+ patch($('#ce-pad'),`<div class="pad-head"><span class="label">${lo}–${hi} arasından seç</span><span>${Math.floor(sel/9)+1}. satır</span></div><div class="pad" style="--cols:${Math.ceil((nums.length+1)/2)}">${nums.map(n=>`<button type="button" data-action="ce-pick" data-n="${n}" aria-pressed="${n===current}" ${used.has(n)?'disabled aria-label="'+n+', bu sütunda var"':''}>${n}</button>`).join('')}<button type="button" class="erase" data-action="ce-erase" aria-label="Kareyi boşalt" ${current?'':'disabled'}>${icons.backspace}</button></div>`);
+ const save=$('#ce-save');save.disabled=left>0;save.innerHTML=left?`${left} kare kaldı`:`Kartımı kullan ${icons.arrow}`;
+}
 async function share(){
  const url=new URL(location.pathname,location.origin);url.searchParams.set('oda',transport.code());
  if(navigator.share){try{await navigator.share({title:'Tombala masasına katıl',text:`Oda kodumuz: ${transport.code()}`,url:url.href});}catch(e){if(e.name!=='AbortError')throw e;}return;}
@@ -595,7 +633,17 @@ document.addEventListener('click',e=>{
   case 'react':sendReaction(Number(button.dataset.react));return;
   case 'toggle-setting':{const key=button.dataset.key;saveSetting(key,!settings[key]);if(key==='sound'&&settings.sound){unlockAudio();sfx.mark();}if(key==='haptics'&&settings.haptics)haptics.mark();sheet._html=null;sheet.innerHTML=sheetHTML('settings');return;}
   case 'theme':saveSetting('theme',button.dataset.theme);applyTheme();sheet.innerHTML=sheetHTML('settings');return;
-  case 'clear-custom':sheet.querySelectorAll('[data-cell]').forEach(input=>input.value='');sheet.querySelector('[data-cell]')?.focus();return;
+  case 'ce-select':editor.sel=Number(button.dataset.index);haptics.tap();renderEditor();return;
+  case 'ce-pick':editor.cells[editor.sel]=Number(button.dataset.n);haptics.tap();editor.sel=nextSlot(editor.sel);$('#custom-error').textContent='';renderEditor();return;
+  case 'ce-erase':editor.cells[editor.sel]=0;haptics.tap();renderEditor();return;
+  case 'ce-layout':{const pattern=Number(button.dataset.pattern);if(pattern===editor.pattern)return;editor.cells=applyPattern(editor.cells,pattern);editor.pattern=pattern;editor.sel=nextSlot(-1);haptics.tap();renderEditor();return;}
+  case 'ce-random':editor.cells=fillCard(editor.cells,editor.pattern);haptics.tap();renderEditor();return;
+  case 'ce-clear':editor.cells=Array(CARD_SIZE).fill(0);editor.sel=nextSlot(-1);haptics.tap();renderEditor();return;
+  case 'ce-save':{
+   const card=editor.cells.map((n,i)=>CARD_PATTERNS[editor.pattern][i]?n:0),message=validateCard(card);
+   if(message){$('#custom-error').textContent=message;haptics.wrong();return;}
+   run(async()=>{await transport.editPlayer({card:encodeCard(card)});closeSheet();toast('Kartın hazır. Şansın bol olsun!');},$('#custom-error'));return;
+  }
   case 'add-bot':haptics.tap();transport.addBot?.();return;
   case 'remove-bot':transport.removeBot?.(Number(button.dataset.slot));closeSheet();return;
   case 'bot-level':haptics.tap();transport.setLevel?.(button.dataset.level);return;
@@ -629,11 +677,6 @@ document.addEventListener('input',e=>{
 document.addEventListener('submit',e=>{
  e.preventDefault();
  if(e.target.id==='join-form'){joinRoom();return;}
- if(e.target.id==='custom-form'){
-  const card=Array(CARD_SIZE).fill(0);sheet.querySelectorAll('[data-cell]').forEach(input=>card[Number(input.dataset.cell)]=input.value===''?0:Number(input.value));
-  const message=validateCard(card);if(message){$('#custom-error').textContent=message;haptics.wrong();return;}
-  run(async()=>{await transport.editPlayer({card:encodeCard(card)});closeSheet();},$('#custom-error'));
- }
 });
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='player-name'){e.preventDefault();e.target.blur();}});
 document.addEventListener('visibilitychange',()=>{
