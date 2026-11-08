@@ -1,5 +1,18 @@
 # Sürüm kaydı
 
+## 4.0.0 — 2026-11-08
+
+- Arayüz baştan tasarlandı: sade tasarım belirteçleri, Manrope yazı tipi, büyük dokunma alanları, sistemle uyumlu açık/koyu tema ve elle tema seçimi. Önceki sürümdeki 5–9 px'lik metinler okunur boyutlara büyütüldü; yalnızca kart kimliği ve sütun aralığı etiketleri küçük kalır.
+- Oyun ekranı: büyük çekiliş topu, sayının Türkçe okunuşu, son çıkanlar, otomatik çekilişte geri sayım halkası; ödül kartları; rakipler canlı mini kart haritası olarak; oyuncunun kendi kartı büyük ve öne çıkan. İşaret damgası anında görünür, sonuç oda transaction'ından gelir.
+- Yeni **Botlarla** modu: 1–3 bot, Rahat/Orta/Çevik tepki hızı, Firebase'siz ve çevrimdışı çalışır; uygulama arka plana geçince duraklar.
+- Yeni mekanikler: oda sahibinin seçtiği çekiliş hızı (Elle, 8, 5, 3 sn), turlar boyunca biriken puan (1. çinko +1, 2. çinko +2, tombala +3), “1 kaldı” yakın kazanma rozeti, 3-2-1 başlangıç geri sayımı, emoji tepkileri.
+- Oyun hissi: sentezlenmiş ses efektleri, isteğe bağlı Türkçe sesli sayı okuma, titreşim (iOS'ta dokunsal anahtar yedeği), oyun sırasında ekranı açık tutma, tombalada konfeti.
+- Ayarlar, yardım, katılma, sayı tablosu, kart seçimi, özel kart ve oyuncu kartı alttan açılan, sürüklenerek kapanan sayfalara taşındı. Davet bağlantısı katılma sayfasını kodla açar; dört hane girilince otomatik katılır.
+- PWA: yeni vektör ikon ve PNG ikonlar (maskable dahil), “Botlarla oyna” kısayolu, ağ öncelikli service worker ile çevrimdışı açılış.
+- Firebase: yeni `tombalaV5` veri modeli (`meta/pace`, oyuncu `score`, `game/interval` 3/5/8 sn) ve ayrı `tombalaV5Reactions` yolu. Puan yalnızca ödülü kazanan işaretlemeyle aynı transaction'da artar; oda sahibi dahil kimse puanı değiştiremez. Kurallar yeniden yayımlanmalı, odalar yeniden kurulmalıdır.
+- `kurulum.html` yeni tasarıma taşındı.
+- Doğrulama: 20 oyun/olay/bot testi ve 15 Firebase Emulator testi. Tarayıcıda 320×568, 375×667, 390×844 ve 430×932 ekranlarda açık ve koyu tema; botlarla tam tur ve tekrar oynama; emülatöre bağlı iki tarayıcıyla oda kurma, bağlantıyla katılma, hız ayarı, otomatik çekiliş, tepki, çinko/tombala, puan tablosu, ikinci tur ve ayrılma; service worker ile çevrimdışı açılış.
+
 ## 3.0.0 — 2026-11-06
 
 - Beş gerçek kart referansına göre 3×9 yerleşim; orta solda ayrı kart kimliği, satırda 5 ve toplam 15 oyun sayısı. Sütun içi sıralama zorunluluğu kaldırıldı.

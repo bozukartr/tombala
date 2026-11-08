@@ -4,9 +4,9 @@ import {readFile} from 'node:fs/promises';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
 import * as api from 'firebase/database';
 import {createAwardFeed} from '../game-events.js';
-import {reserveRoom,reserveSeat,commitMark,ROOM_BASE} from '../room-transactions.js';
-import {newRoom,newPlayer,cardPatch,makeCard,decodeCard,members,startRound,drawNext,markNumber,resetRound,range} from '../core.js';
-const{ref,set,get,update,remove,onValue,runTransaction}=api;
+import {reserveRoom,reserveSeat,commitMark,sendReaction,ROOM_BASE,REACTION_BASE} from '../room-transactions.js';
+import {newRoom,newPlayer,cardPatch,makeCard,decodeCard,members,startRound,drawNext,markNumber,resetRound,setPace,range} from '../core.js';
+const{ref,set,get,update,remove,onValue,runTransaction,serverTimestamp}=api;
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000'){delete process.env.HTTP_PROXY;delete process.env.http_proxy;}
 const enabled=!!process.env.FIREBASE_DATABASE_EMULATOR_HOST;let env;const listeners=[];
 before(async()=>{if(enabled)env=await initializeTestEnvironment({projectId:'demo-tombala',database:{host:'127.0.0.1',port:9000,rules:await readFile(new URL('../database.rules.json',import.meta.url),'utf8')}});});
@@ -53,4 +53,47 @@ t('RTDB: eşzamanlı son dokunuşta tek tombala kaydı oluşur',async()=>{
  assert.equal(results.filter(r=>r.status==='fulfilled'&&r.value===true).length,1);
  await observe(host,path,null,r=>r.meta.phase==='finished');const r=await state(host,path);
  assert.equal(r.game.seq,29);assert.equal(r.game.awards.tombala.seq,29);assert.ok(['host','p2'].includes(r.game.awards.tombala.uid));
+});
+
+t('RTDB: ödül puanı yalnızca kazanan işaretlemeyle artar ve tekrar oynamada korunur',async()=>{
+ const{host,p2,path,code}=await table(true),card=decodeCard((await state(p2,path)).players[1].card),row=card.slice(0,9).filter(Boolean);
+ for(const n of row.slice(0,4))assert.ok(await commitMark(api,p2,'p2',code,n));
+ await observe(p2,path,null,r=>r.game.seq===4);
+ const before=await state(p2,path),winning=markNumber(structuredClone(before),'p2',row[4]);
+ assert.equal(winning.players[1].score,1);
+ for(const mutate of [r=>r.players[1].score=0,r=>r.players[1].score=3,r=>r.players[0].score=1]){const bad=structuredClone(winning);mutate(bad);await assertFails(set(ref(p2,path),bad));}
+ const extra=markNumber(structuredClone(before),'p2',card.slice(9,18).filter(Boolean)[0]);extra.players[1].score=1;await assertFails(set(ref(p2,path),extra));
+ await assertSucceeds(set(ref(p2,path),winning));
+ for(const n of card.filter(Boolean))await commitMark(api,p2,'p2',code,n);
+ const done=await observe(host,path,null,r=>r.meta.phase==='finished');assert.equal(done.players[1].score,6);assert.equal(done.players[0].score,0);
+ const forged=resetRound(structuredClone(done));forged.players[1].score=0;await assertFails(set(ref(host,path),forged));
+ await assertSucceeds(move(host,path,resetRound));const lobby=await observe(p2,path,null,r=>r.meta.phase==='lobby');assert.equal(lobby.players[1].score,6);
+ await assertFails(update(ref(p2,path+'/players/1'),{score:9}));await assertFails(set(ref(p2,path+'/players/1/score'),7));await assertFails(update(ref(host,path+'/players/1'),{score:0}));
+ const joiner=newPlayer('late','Geç',2);joiner.score=4;await assertFails(set(ref(db('late'),path+'/players/2'),joiner));joiner.score=0;await assertSucceeds(set(ref(db('late'),path+'/players/2'),joiner));
+});
+t('RTDB: çekiliş hızını yalnızca oda sahibi geçerli değerlerle değiştirir',async()=>{
+ const{host,p2,path}=await table();
+ await assertSucceeds(update(ref(host,path+'/meta'),{pace:3000}));await assertFails(update(ref(host,path+'/meta'),{pace:4000}));await assertFails(update(ref(p2,path+'/meta'),{pace:8000}));
+ await assertSucceeds(update(ref(host,path+'/meta'),{pace:0}));await assertSucceeds(move(host,path,r=>setPace(r,8000)));
+ await assertFails(update(ref(host,path+'/game'),{interval:4000}));
+ await update(ref(host,path+'/players/0'),{readyRound:1});await update(ref(p2,path+'/players/1'),{readyRound:1});await observe(host,path,null,r=>members(r).every(([,p])=>p.readyRound===1));
+ await assertSucceeds(move(host,path,startRound));let r=await state(host,path);assert.equal(r.game.auto,true);assert.equal(r.game.interval,8000);
+ await assertSucceeds(move(host,path,room=>setPace(room,0)));r=await state(host,path);assert.equal(r.game.auto,false);assert.equal(r.meta.pace,0);
+ await assertSucceeds(move(host,path,room=>setPace(room,3000)));r=await state(host,path);assert.equal(r.game.interval,3000);assert.equal(r.game.auto,true);
+ await assertFails(set(ref(p2,path+'/game/auto'),false));await assertFails(update(ref(p2,path+'/meta'),{pace:5000}));
+ await assertSucceeds(move(host,path,drawNext));
+ await env.withSecurityRulesDisabled(ctx=>update(ref(ctx.database(),path+'/game'),{drawn:','+range(90).map(n=>n+1).join(',')+',',lastDraw:90}));
+ const drawn=await observe(p2,path,null,r=>r.game.lastDraw===90),n=decodeCard(drawn.players[1].card).filter(Boolean)[0];
+ const bad=markNumber(structuredClone(drawn),'p2',n);bad.meta.pace=5000;await assertFails(set(ref(p2,path),bad));
+ await assertSucceeds(set(ref(p2,path),markNumber(structuredClone(drawn),'p2',n)));
+});
+t('RTDB: tepkiyi yalnızca masadaki oyuncu kendi koltuğuna, sınırlı sıklıkla yazar',async()=>{
+ const{host,p2,code}=await table(),base=REACTION_BASE+'/'+code;
+ await assertSucceeds(sendReaction(api,p2,code,1,0));await assertFails(sendReaction(api,p2,code,1,2));
+ await assertFails(sendReaction(api,p2,code,0,1));await assertFails(sendReaction(api,db('stranger'),code,2,1));
+ await assertFails(set(ref(host,base+'/0'),{e:9,t:serverTimestamp()}));await assertFails(set(ref(host,base+'/0'),{e:1,t:Date.now()-5000}));await assertFails(set(ref(host,base+'/0'),{e:1,t:serverTimestamp(),x:1}));
+ await new Promise(resolve=>setTimeout(resolve,800));await assertSucceeds(sendReaction(api,p2,code,1,3));
+ const seen=await observe(host,base,null,r=>r?.[1]?.e===3);assert.equal(typeof seen[1].t,'number');
+ await assertFails(get(ref(db(),base)));await assertFails(get(ref(db('host'),REACTION_BASE)));
+ await assertFails(sendReaction(api,host,'12345',0,1));
 });

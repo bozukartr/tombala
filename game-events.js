@@ -11,3 +11,18 @@ export function createAwardFeed(){
   }
  };
 }
+// Tepkiler koltuk başına son zaman damgasıyla izlenir. İlk okumada eski tepkiler oynatılmaz.
+export function createReactionFeed(){
+ let key=null,last={};
+ const valid=map=>Object.entries(map||{}).filter(([,r])=>r&&Number.isInteger(r.e)&&typeof r.t==='number');
+ return{
+  clear(){key=null;last={};},
+  update(map,code=''){
+   const entries=valid(map);
+   if(key!==code){key=code;last=Object.fromEntries(entries.map(([slot,r])=>[slot,r.t]));return[];}
+   const fresh=entries.filter(([slot,r])=>r.t>(last[slot]??-Infinity)).map(([slot,r])=>({slot:Number(slot),e:r.e,t:r.t}));
+   for(const r of fresh)last[r.slot]=r.t;
+   return fresh.sort((a,b)=>a.t-b.t);
+  }
+ };
+}

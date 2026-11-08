@@ -1,5 +1,7 @@
-import {newRoom,newPlayer,members,randomInt,markNumber,markedNumbers} from './core.js';
-export const ROOM_BASE='tombalaV4';
+import {newRoom,newPlayer,members,randomInt,markNumber,markedNumbers,REACTIONS} from './core.js';
+export const ROOM_BASE='tombalaV5';
+// Tepkiler oda transaction'larıyla yarışmasın diye ayrı yolda tutulur.
+export const REACTION_BASE=ROOM_BASE+'Reactions';
 const expired=room=>!room?.meta||Date.now()-room.meta.createdAt>21600000;
 // Aynı kod veya koltuk için yarışan istemciler sunucudan gelen güncel durumu
 // yeniden okur. PERMISSION_DENIED gerçek bir doluluk yarışından da gelebilir.
@@ -47,4 +49,10 @@ export async function commitMark(api,db,uid,code,number){
   return markNumber(room,uid,number);
  },{applyLocally:false});
  return result.committed;
+}
+
+// Zaman damgası sunucuda yazılır; kurallar aynı koltuktan art arda gönderimi sınırlar.
+export async function sendReaction(api,db,code,slot,index){
+ if(!Number.isInteger(index)||index<0||index>=REACTIONS.length)throw new Error('Bu tepki kullanılamıyor.');
+ await api.set(api.ref(db,`${REACTION_BASE}/${code}/${slot}`),{e:index,t:api.serverTimestamp()});
 }

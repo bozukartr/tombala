@@ -1,11 +1,11 @@
 {
   "name": "tombala",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/core.test.js tests/events.test.js",
-    "check": "node --check app.js && node --check core.js && node --check firebase.js && node --check room-transactions.js && node --check kurulum.js && node --check game-events.js && node scripts/build-rules.js --check",
+    "test": "node --test tests/core.test.js tests/events.test.js tests/solo.test.js",
+    "check": "node --check app.js && node --check core.js && node --check firebase.js && node --check room-transactions.js && node --check kurulum.js && node --check game-events.js && node --check solo.js && node --check fx.js && node --check sw.js && node scripts/build-rules.js --check",
     "test:database": "firebase emulators:exec --project demo-tombala --only database \"node --test tests/database.test.js\"",
     "rules:build": "node scripts/build-rules.js"
   },

@@ -2,6 +2,17 @@
 export const COLORS=['coral','sage','gold','blue'];
 export const COLOR_NAMES=['Mercan','Adaçayı','Bal','Deniz'];
 export const CARD_ROWS=3,CARD_COLUMNS=9,CARD_SIZE=27,CARD_ID_INDEX=9;
+export const STAGES=['first','second','tombala'];
+export const STAGE_LABELS={first:'1. Çinko',second:'2. Çinko',tombala:'Tombala'};
+// Ödül puanları masa skoruna eklenir ve turlar boyunca korunur.
+export const STAGE_POINTS={first:1,second:2,tombala:3};
+const STAGE_ROWS={first:1,second:2,tombala:3};
+// Otomatik çekiliş aralıkları (ms). 0, oda sahibinin sayıları elle çekmesidir.
+export const PACES=[8000,5000,3000];
+export const DEFAULT_PACE=5000;
+// Masadaki herkesin görebildiği kısa tepkiler. Veritabanında sıra numarası saklanır.
+export const REACTIONS=['👏','🔥','😮','😂','🙈'];
+export const validPace=value=>value===0||PACES.includes(value);
 export const range=n=>Array.from({length:n},(_,i)=>i);
 export function randomInt(max){const limit=Math.floor(0x100000000/max)*max,a=new Uint32Array(1);do{crypto.getRandomValues(a);}while(a[0]>=limit);return a[0]%max;}
 export function shuffle(values){const a=[...values];for(let i=a.length-1;i>0;i--){const j=randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -35,14 +46,36 @@ const list=value=>typeof value==='string'?value.split(',').filter(Boolean).map(N
 export const drawnNumbers=game=>list(game?.drawn);
 export const markedNumbers=player=>list(player?.marks);
 export function progress(card,marked=[]){const set=new Set(marked),completed=range(3).filter(r=>{const row=card.slice(r*9,r*9+9).filter(Boolean);return row.length===5&&row.every(n=>set.has(n));});return{hits:card.filter(n=>n&&set.has(n)).length,rows:completed.length,completed};}
+// Sıradaki boş ödül. Ödüller yalnızca 1. çinko → 2. çinko → tombala sırasıyla verilir.
+export const nextStage=awards=>STAGES.find(key=>!awards?.[key]?.uid)||null;
+// Oyuncunun belirtilen ödüle kaç işaret uzakta olduğunu yalnızca kendi işaretlerinden hesaplar.
+// Çıkmış ama işaretlenmemiş sayılar ipucu vermemek için hesaba katılmaz.
+export function remainingFor(card,marked,stage){
+ if(!STAGE_ROWS[stage])return Infinity;
+ const set=new Set(marked),missing=range(3).map(r=>card.slice(r*9,r*9+9).filter(n=>n&&!set.has(n)).length).sort((a,b)=>a-b);
+ return missing.slice(0,STAGE_ROWS[stage]).reduce((sum,n)=>sum+n,0);
+}
+const ONES=['','bir','iki','üç','dört','beş','altı','yedi','sekiz','dokuz'];
+const TENS=['','on','yirmi','otuz','kırk','elli','altmış','yetmiş','seksen','doksan'];
+export const numberWord=n=>Number.isInteger(n)&&n>=1&&n<=90?[TENS[Math.floor(n/10)],ONES[n%10]].filter(Boolean).join(' '):'';
 export const members=room=>Object.entries(room?.players||{}).filter(([,p])=>p).sort((a,b)=>Number(a[0])-Number(b[0]));
 export function canStart(room){const ps=members(room);return room.meta.phase==='lobby'&&ps.length>=2&&ps.length<=4&&ps.every(([,p])=>p.online&&p.readyRound===room.meta.round&&!validateCard(decodeCard(p.card)));}
-export const emptyAwards=()=>Object.fromEntries(['first','second','tombala'].map(key=>[key,{uid:'',seq:0,number:0,row:-1}]));
-export const emptyGame=()=>({drawn:',',lastDraw:0,auto:false,interval:5000,updatedAt:0,seq:0,lastUid:'',lastNumber:0,lastRow:-1,awards:emptyAwards()});
+export const emptyAwards=()=>Object.fromEntries(STAGES.map(key=>[key,{uid:'',seq:0,number:0,row:-1}]));
+export const emptyGame=(interval=DEFAULT_PACE,auto=false)=>({drawn:',',lastDraw:0,auto,interval:PACES.includes(interval)?interval:DEFAULT_PACE,updatedAt:0,seq:0,lastUid:'',lastNumber:0,lastRow:-1,awards:emptyAwards()});
 export const emptyMarks=()=>({marks:',',hits0:0,hits1:0,hits2:0});
-export function newPlayer(uid,name,color=0){return{uid,name,color,cardNo:color+1,...cardPatch(makeCard()),...emptyMarks(),readyRound:0,online:true,joinedAt:Date.now()};}
-export function newRoom(uid,name){return{meta:{hostId:uid,phase:'lobby',round:1,createdAt:Date.now()},players:{0:newPlayer(uid,name)},game:emptyGame()};}
-export function startRound(room){if(!canStart(room))throw new Error('Başlamak için en az 2 kişi ve herkesin hazır olması gerekiyor.');room.meta.phase='playing';room.game={...emptyGame(),updatedAt:Date.now()};for(const[,p]of members(room))Object.assign(p,emptyMarks());return room;}
+export function newPlayer(uid,name,color=0){return{uid,name,color,cardNo:color+1,...cardPatch(makeCard()),...emptyMarks(),score:0,readyRound:0,online:true,joinedAt:Date.now()};}
+export function newRoom(uid,name,pace=DEFAULT_PACE){return{meta:{hostId:uid,phase:'lobby',round:1,createdAt:Date.now(),pace:validPace(pace)?pace:DEFAULT_PACE},players:{0:newPlayer(uid,name)},game:emptyGame(pace||DEFAULT_PACE)};}
+// Oda ayarı turdan tura korunur: 0 elle çekiliş, diğerleri otomatik çekiliş aralığıdır.
+const roundInterval=room=>PACES.includes(room.meta.pace)?room.meta.pace:PACES.includes(room.game?.interval)?room.game.interval:DEFAULT_PACE;
+export function startRound(room,now=Date.now()){if(!canStart(room))throw new Error('Başlamak için en az 2 kişi ve herkesin hazır olması gerekiyor.');room.meta.phase='playing';room.game={...emptyGame(roundInterval(room),room.meta.pace>0),updatedAt:now};for(const[,p]of members(room))Object.assign(p,emptyMarks());return room;}
+// Oda sahibinin çekiliş ayarı. Oyun sırasında 0 otomatik çekilişi duraklatır.
+export function setPace(room,pace,now=Date.now()){
+ if(!validPace(pace))throw new Error('Geçersiz çekiliş hızı.');
+ if(room.meta.phase==='finished')throw new Error('Tur tamamlandı.');
+ room.meta.pace=pace;
+ if(room.meta.phase==='playing'){if(pace)room.game.interval=pace;room.game.auto=pace>0&&drawnNumbers(room.game).length<90;room.game.updatedAt=now;}
+ return room;
+}
 export function drawNext(room,now=Date.now()){
  if(room.meta.phase!=='playing')return room;
  const drawn=drawnNumbers(room.game),remaining=range(90).map(n=>n+1).filter(n=>!drawn.includes(n));
@@ -62,8 +95,12 @@ export function markNumber(room,uid,number){
  const row=Math.floor(index/9);p.marks+=number+',';p['hits'+row]++;
  room.game.seq++;room.game.lastUid=uid;room.game.lastNumber=number;room.game.lastRow=row;
  const count=progress(card,markedNumbers(p)).rows;
- for(const[key,target]of [['first',1],['second',2],['tombala',3]])if(!room.game.awards[key].uid&&count>=target)room.game.awards[key]={uid,seq:room.game.seq,number,row};
+ for(const key of STAGES)if(!room.game.awards[key].uid&&count>=STAGE_ROWS[key]){room.game.awards[key]={uid,seq:room.game.seq,number,row};p.score=(p.score||0)+STAGE_POINTS[key];}
  if(room.game.awards.tombala.uid){room.meta.phase='finished';room.game.auto=false;}
  return room;
 }
-export function resetRound(room){if(room.meta.phase!=='finished')throw new Error('Oyun henüz bitmedi.');room.meta.phase='lobby';room.meta.round++;room.game=emptyGame();for(const[,p]of members(room))Object.assign(p,emptyMarks());return room;}
+export function resetRound(room){if(room.meta.phase!=='finished')throw new Error('Oyun henüz bitmedi.');room.meta.phase='lobby';room.meta.round++;room.game=emptyGame(roundInterval(room));for(const[,p]of members(room))Object.assign(p,emptyMarks());return room;}
+// Puan tablosu: önce masa puanı, eşitlikte bu turdaki işaret sayısı, sonra koltuk sırası.
+export function standings(room){
+ return members(room).map(([slot,p])=>({slot:Number(slot),player:p,score:p.score||0,hits:progress(decodeCard(p.card),markedNumbers(p)).hits})).sort((a,b)=>b.score-a.score||b.hits-a.hits||a.slot-b.slot);
+}

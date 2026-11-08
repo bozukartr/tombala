@@ -3,29 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#f7f5ef">
-<meta name="description" content="Aynı masanın etrafında, nerede olursanız olun. 2–4 kişilik çevrimiçi aile tombalası.">
+<meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1012" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Aynı masanın etrafında, nerede olursanız olun. 2–4 kişilik çevrimiçi aile tombalası; istersen botlarla tek başına.">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Tombala">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap">
 <link rel="stylesheet" href="styles.css">
+<script>try{const t=JSON.parse(localStorage.getItem('tombala-settings')||'{}').theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch{}</script>
 <title>Tombala · Birlikte güzel</title>
 </head>
-<body>
+<body data-screen="home">
 <div class="app-shell">
-<header class="topbar"><div class="brand" aria-label="Tombala"><span class="brand-icon">t<span></span></span>tombala<span class="brand-dot">.</span></div><div class="header-actions"><span id="connection" class="connection"><i></i><span>Birlikte güzel</span></span><button id="help-button" class="icon-button" aria-label="Nasıl oynanır?">?</button><button id="sound-button" class="icon-button" aria-label="Sesi aç" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6m0-6-5 6"/></svg></button></div></header>
+<header id="topbar" class="topbar"></header>
 <main id="app" tabindex="-1"></main>
 <div id="action-dock" class="action-dock"></div>
 </div>
 <div id="celebration" class="celebration" role="status" aria-live="polite" hidden></div>
+<div id="reaction-layer" class="reaction-layer" aria-hidden="true"></div>
+<div id="countdown" class="countdown" aria-live="assertive" hidden></div>
 <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
-<dialog id="help-dialog"><div class="dialog-head"><span class="eyebrow">HEP BİRLİKTE</span><button class="icon-button" data-close aria-label="Kapat">×</button></div><h2>Bir turda öğrenirsin.</h2><p>Oda kur, dört haneli kodu sevdiklerinle paylaş. Lobide herkes bir kart seçsin ve hazır olsun.</p><ol class="rules-list"><li><b>Sayılar torbadan çıkar.</b><span>Oda sahibi sayıları tek tek veya otomatik çeker. Çıkan sayıya kendi kartında dokunarak işaretle. İşaretlemediğin sayı bulunmuş sayılmaz.</span></li><li><b>Satırları tamamla.</b><span>Bir satırı ilk manuel tamamlayan 1. çinkoyu, iki satırı ilk tamamlayan 2. çinkoyu alır. Herkesin ekranında kutlanır.</span></li><li><b>Ve… tombala!</b><span>3×9 kartındaki 15 oyun sayısını ilk işaretleyen tombala yapar. Sol ortadaki kart numarası oyun sayısı değildir. Firebase’de ilk kaydedilen tamamlayıcı dokunuş kazanır.</span></li></ol><p class="small muted">Oyun bitince “Tekrar oyna” ile aynı odanın lobisine dönersiniz. Herkes yeniden kart seçebilir.</p><button class="button primary full" data-close>Anlaştık, başlayalım</button></dialog>
-<dialog id="card-dialog"></dialog>
-<dialog id="numbers-dialog"></dialog>
-<dialog id="leave-dialog"><div class="dialog-head"><span class="eyebrow">KÜÇÜK BİR MOLA</span><button class="icon-button" data-close aria-label="Kapat">×</button></div><h2>Masadan ayrılıyor musun?</h2><p>Oyun devam ediyorsa kartın bu tur boyunca masada kalır. Diğer oyuncular devam edebilir.</p><div class="dialog-actions"><button class="button secondary" data-close>Masada kal</button><button id="confirm-leave" class="button primary">Ayrıl</button></div></dialog>
+<p id="announcer" class="visually-hidden" aria-live="polite"></p>
+<dialog id="sheet" class="sheet" aria-labelledby="sheet-title" autofocus tabindex="-1"></dialog>
 <noscript>Bu oyunu oynamak için tarayıcında JavaScript'i etkinleştir.</noscript>
 <script type="module" src="app.js"></script>
 </body>

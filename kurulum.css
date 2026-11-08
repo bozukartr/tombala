@@ -1,27 +1,25 @@
-a.button,a.icon-button{text-decoration:none}
-.setup-screen{gap:18px;padding-top:18px}
-.setup-intro h1{font-size:29px;letter-spacing:-1.2px;margin:10px 0}
-.setup-intro>p{font-size:12px;color:var(--muted);max-width:360px}
-.project-label{display:inline-block;font-size:10px;color:#89967e;background:#ecf0e4;border-radius:9px;padding:9px 11px;margin-top:15px}
-.project-label strong{font-weight:650;color:#697e5c}
-.setup-step{background:var(--white);border:1px solid var(--line);border-radius:23px;padding:20px}
-.step-title{display:flex;align-items:center;gap:10px;margin-bottom:13px}
-.step-index{width:29px;height:29px;background:#e9efdf;color:#7d956c;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:12px;font-weight:800;flex-shrink:0}
-.step-index.done{background:#71976a;color:white}
-.step-title h2{font-size:15px;letter-spacing:-.4px}
-.setup-step>p{font-size:11px;color:var(--muted);margin-bottom:14px}
-.setup-step .button{min-height:48px;font-size:12px;border-radius:15px;padding:12px 10px}
-.setup-step .setup-status{font-size:10px;line-height:1.7;margin:10px 0 0;white-space:pre-line}
+/* Telefonla Firebase kurulumu: oyunla aynı tasarım belirteçlerini kullanır. */
+a.btn{text-decoration:none}
+.setup-screen{gap:14px;padding-top:6px}
+.setup-intro{padding:6px 2px 4px}
+.setup-intro h1{font-size:30px;font-weight:800;letter-spacing:-1.2px;line-height:1.1}
+.setup-intro>p{font-size:15px;color:var(--ink-2);margin:8px 0 14px;font-weight:550;line-height:1.5}
+.setup-step{padding:18px}
+.step-title{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.step-index{width:32px;height:32px;border-radius:11px;background:var(--surface-2);color:var(--ink);display:grid;place-items:center;font-size:14px;font-weight:800;flex-shrink:0}
+.step-index.done{background:var(--ok);color:#fff}
+.step-title h2{font-size:17px;font-weight:800;letter-spacing:-.4px}
+.setup-step>p{font-size:14px;color:var(--ink-2);margin-bottom:14px;line-height:1.5;font-weight:550}
+.setup-step .setup-status{font-size:13.5px;line-height:1.6;margin:12px 0 0;white-space:pre-line;font-weight:650}
 .setup-status:empty{display:none}
-.setup-status.success{color:#5f8251}
-.setup-status.error{color:#b15b42}
-.setup-step details{margin-top:15px;padding-top:13px;border-top:1px solid var(--line)}
-.setup-step summary{font-size:10px;color:#8a997e;cursor:pointer;min-height:30px;line-height:30px}
-#rules-text{width:100%;margin:8px 0 10px;resize:vertical;border:1px solid var(--line);border-radius:10px;background:#f6f8ef;padding:10px;font-family:ui-monospace,monospace;font-size:11px;color:#607451;line-height:1.5}
-.setup-file-link{display:inline-block;margin-top:9px;color:#91a083;font-size:9px;text-underline-offset:3px;min-height:25px;line-height:25px}
-.publish-list{padding-left:18px;font-size:11px;color:var(--muted);line-height:1.8;margin:0 0 17px}
-.publish-list li{padding-left:4px;margin-bottom:9px}
-.publish-list strong{font-weight:650;color:#637c55}
-.setup-step .setup-hint,.setup-hint{font-size:10px;color:#9aa58e;line-height:1.7;margin:13px 0 0}
-.final-hint{padding:0 7px;margin:0 0 2px}
-@media(max-width:359px){.setup-step{padding:17px}.step-title{gap:8px}.step-title h2{font-size:14px}.setup-intro h1{font-size:27px}}
+.setup-status.success{color:var(--ok)}
+.setup-status.error{color:var(--danger)}
+.setup-step details{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.setup-step summary{font-size:14px;color:var(--ink-2);cursor:pointer;min-height:36px;line-height:36px;font-weight:650}
+#rules-text{width:100%;margin:8px 0 10px;resize:vertical;border:0;border-radius:12px;background:var(--surface-2);color:var(--ink);padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5}
+.setup-file-link{display:inline-block;margin-top:10px;color:var(--ink-2);font-size:13px;font-weight:650;text-underline-offset:3px;min-height:32px;line-height:32px}
+.publish-list{padding-left:20px;font-size:14px;color:var(--ink-2);line-height:1.6;margin:0 0 16px;font-weight:550}
+.publish-list li{padding-left:4px;margin-bottom:8px}
+.publish-list strong{font-weight:750;color:var(--ink)}
+.setup-hint{font-size:13px;color:var(--ink-3);line-height:1.6;margin:12px 0 0;font-weight:600}
+.final-hint{padding:0 4px;margin:0 0 4px}

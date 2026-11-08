@@ -1,8 +1,9 @@
-import {randomInt,decodeCard,validateCard,cardPatch,members,canStart,startRound,drawNext,resetRound} from './core.js';
+import {randomInt,decodeCard,validateCard,cardPatch,members,canStart,startRound,drawNext,resetRound,setPace} from './core.js';
 import {firebaseConfig} from './firebase-config.js';
+import {ROOM_BASE as BASE,REACTION_BASE,reserveRoom,reserveSeat,commitMark,sendReaction} from './room-transactions.js';
 const SDK='https://www.gstatic.com/firebasejs/12.4.0/';
-import {ROOM_BASE as BASE,reserveRoom,reserveSeat,commitMark} from './room-transactions.js';
-let api,db,auth,user,initPromise,unsubscribe,stopPresence,presence,roomCode;
+const SESSION_KEY='tombala-room-v5';
+let api,db,auth,user,initPromise,unsubscribe,stopPresence,stopReactions,presence,roomCode;
 const roomRef=()=>api.ref(db,`${BASE}/${roomCode}`);
 function friendly(error) {
   const code=String(error?.code||error?.message||'');
@@ -11,6 +12,8 @@ function friendly(error) {
   if(/network|unavailable|timeout/i.test(code)) return new Error('Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.');
   return error;
 }
+export const mode='online';
+export const savedRoom=()=>sessionStorage.getItem(SESSION_KEY);
 export async function connect() {
   if(!initPromise) initPromise=(async()=>{
     const [a,b,c]=await Promise.all([import(SDK+'firebase-app.js'),import(SDK+'firebase-auth.js'),import(SDK+'firebase-database.js')]);
@@ -27,15 +30,19 @@ export const code=()=>roomCode;
 export async function create(name) {
   await connect();
   roomCode=await reserveRoom(api,db,user.uid,name).catch(e=>{throw friendly(e)});
-  sessionStorage.setItem('tombala-room-v4',roomCode);return roomCode;
+  sessionStorage.setItem(SESSION_KEY,roomCode);return roomCode;
 }
 export async function join(next,name) {
   await connect();
   roomCode=await reserveSeat(api,db,user.uid,next,name).catch(e=>{throw friendly(e)});
-  sessionStorage.setItem('tombala-room-v4',roomCode);return roomCode;
+  sessionStorage.setItem(SESSION_KEY,roomCode);return roomCode;
+}
+function stopWatching(){
+  unsubscribe?.();stopPresence?.();stopReactions?.();
+  unsubscribe=null;stopPresence=null;stopReactions=null;
 }
 export async function watch(onRoom,onConnection,onError) {
-  unsubscribe?.();stopPresence?.();
+  stopWatching();
   const snapshot=await api.get(roomRef());
   const slot=members(snapshot.val()).find(([,p])=>p.uid===user.uid)?.[0];
   if(slot===undefined)throw new Error('Bu masada yerin bulunamadı.');
@@ -45,6 +52,20 @@ export async function watch(onRoom,onConnection,onError) {
     if(connected){try{await api.onDisconnect(presence).set(false);await api.set(presence,true);}catch(e){onError(friendly(e));}}
   });
   unsubscribe=api.onValue(roomRef(),snap=>onRoom(snap.val()),e=>onError(friendly(e)));
+}
+// Tepkiler ayrı yolda dinlenir; okunamazsa oyun etkilenmez.
+export function watchReactions(onReactions) {
+  stopReactions?.();
+  stopReactions=api.onValue(api.ref(db,`${REACTION_BASE}/${roomCode}`),snap=>onReactions(snap.val()),()=>{});
+}
+async function mySlot(){
+  const room=(await api.get(roomRef())).val();
+  return members(room).find(([,p])=>p.uid===user.uid)?.[0];
+}
+export async function react(index) {
+  const slot=await mySlot();
+  if(slot===undefined)throw new Error('Masadaki yerin bulunamadı.');
+  await sendReaction(api,db,roomCode,slot,index).catch(e=>{throw friendly(e)});
 }
 export async function editPlayer(changes) {
   if(changes.card!==undefined){const card=decodeCard(changes.card),error=validateCard(card);if(error)throw new Error(error);changes={...changes,...cardPatch(card)};}
@@ -64,7 +85,7 @@ export async function hostAction(action,value) {
       if(room.meta.phase!=='playing'||!room.game.auto||Date.now()-room.game.updatedAt<room.game.interval)return;
       return drawNext(room);
     }
-    if(action==='auto'){if(room.meta.phase!=='playing')return;room.game.auto=!!value;room.game.updatedAt=Date.now();return room;}
+    if(action==='pace'){if(room.meta.phase==='finished')return;return setPace(room,value);}
     if(action==='reset'){if(room.meta.phase!=='finished')return;return resetRound(room);}
   },{applyLocally:false}).catch(e=>{throw friendly(e)});
   if(!result.committed&&action!=='tick')throw new Error('İşlem tamamlanamadı. Masanın güncel durumunu kontrol et.');
@@ -86,14 +107,15 @@ export async function leave(room) {
       await api.remove(playerRef).catch(()=>{});
     }else await api.set(presence,false);
   }
-  unsubscribe?.();stopPresence?.();unsubscribe=null;stopPresence=null;
-  await api.onDisconnect(presence).cancel();presence=null;roomCode=null;sessionStorage.removeItem('tombala-room-v4');
+  stopWatching();
+  if(presence)await api.onDisconnect(presence).cancel();
+  presence=null;roomCode=null;sessionStorage.removeItem(SESSION_KEY);
 }
 
 export async function abandon() {
-  unsubscribe?.();stopPresence?.();unsubscribe=null;stopPresence=null;
+  stopWatching();
   if(presence){await api.onDisconnect(presence).cancel().catch(()=>{});presence=null;}
-  roomCode=null;sessionStorage.removeItem('tombala-room-v4');
+  roomCode=null;sessionStorage.removeItem(SESSION_KEY);
 }
 
 // Salt okuma kontrolü: oda oluşturmaz ve oyuncu bilgilerini almaz.
